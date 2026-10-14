@@ -1,0 +1,6 @@
+# Dependensi Proyek Komputasi Paralel - Pengolahan Citra Digital Multiprocessing
+numpy>=1.26.0
+opencv-python>=4.9.0
+psutil>=5.9.0
+matplotlib>=3.8.0
+streamlit>=1.35.0
