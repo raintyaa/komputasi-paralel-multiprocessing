@@ -815,9 +815,10 @@ with tab_bench:
                                     execution_queue.append(("B", 2048, f_info, p, img_name, img_data))
 
                     if "Skenario C (Kompleksitas 3 Filter pada 2048px @ P=4)" in bench_scenarios:
-                        for f_info in FILTERS_CONFIG:
-                            for img_name, img_data in loaded_dataset[2048]:
-                                execution_queue.append(("C", 2048, f_info, 4, img_name, img_data))
+                        if "Skenario B (Variasi Worker P=1,2,4,8 pada 2048px)" not in bench_scenarios:
+                            for f_info in FILTERS_CONFIG:
+                                for img_name, img_data in loaded_dataset[2048]:
+                                    execution_queue.append(("C", 2048, f_info, 4, img_name, img_data))
 
                     total_runs = len(execution_queue)
                     new_records = []
@@ -867,6 +868,14 @@ with tab_bench:
                             "is_identical": res_item["is_identical"],
                             "max_diff": res_item["max_diff"]
                         })
+
+                    # Jika Skenario C dipilih dan Skenario B dijalankan, duplikasi data P=4 untuk Skenario C
+                    if "Skenario C (Kompleksitas 3 Filter pada 2048px @ P=4)" in bench_scenarios and "Skenario B (Variasi Worker P=1,2,4,8 pada 2048px)" in bench_scenarios:
+                        for r in list(new_records):
+                            if r["scenario"] == "B" and r["p"] == 4 and r["resolution"] == 2048:
+                                rec_c = r.copy()
+                                rec_c["scenario"] = "C"
+                                new_records.append(rec_c)
 
                     # Tutup pools
                     for pool in pools.values():
@@ -934,14 +943,27 @@ with tab_bench:
                 st.dataframe(stat_df, use_container_width=True)
 
             # Tombol Download CSV
-            with open(csv_path, "rb") as f:
-                st.download_button(
-                    label="📥 Unduh Dataset CSV Pengujian (benchmark_results_latest.csv)",
-                    data=f.read(),
-                    file_name="benchmark_results_latest.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+            summary_csv_path = os.path.join(BASE_DIR, "results", "benchmark_results_summary.csv")
+            col_dl1, col_dl2 = st.columns(2)
+            with col_dl1:
+                with open(csv_path, "rb") as f:
+                    st.download_button(
+                        label="📥 Unduh Data Mentah (810 Runs CSV)",
+                        data=f.read(),
+                        file_name="benchmark_results_latest.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
+            with col_dl2:
+                if os.path.exists(summary_csv_path):
+                    with open(summary_csv_path, "rb") as f_sum:
+                        st.download_button(
+                            label="📊 Unduh Ringkasan Statistik (27 Rows CSV)",
+                            data=f_sum.read(),
+                            file_name="benchmark_results_summary.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
         else:
             st.info("Belum ada data riwayat pengujian. Silakan konfigurasikan skenario dan klik tombol jalankan.")
 

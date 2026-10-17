@@ -197,11 +197,11 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
         if f_data.empty:
             continue
 
-        # Cocokkan nilai dengan target resolusi
+        # Cocokkan nilai dengan target resolusi (gunakan rata-rata jika multi-citra)
         y_vals = []
         for r in target_resolutions:
             val_match = f_data[f_data["resolution"] == r]["speedup"]
-            y_vals.append(val_match.iloc[0] if not val_match.empty else np.nan)
+            y_vals.append(float(val_match.mean()) if not val_match.empty else np.nan)
 
         style = FILTER_STYLES.get(f_name, {
             "label": f_name,
@@ -355,7 +355,7 @@ def plot_scenario_b(
             match = f_data[f_data["p"] == p]["speedup"]
             if not match.empty:
                 p_vals.append(p)
-                speedup_vals.append(match.iloc[0])
+                speedup_vals.append(float(match.mean()))
 
         style = FILTER_STYLES.get(f_name, {
             "label": f_name,
