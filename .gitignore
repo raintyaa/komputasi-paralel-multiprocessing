@@ -41,6 +41,9 @@ data/output/*
 !data/output/.gitkeep
 data/input/*
 !data/input/.gitkeep
+data/dataset_30/*
+!data/dataset_30/.gitkeep
+*.bak
 
 # OS / Editor
 .DS_Store
