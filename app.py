@@ -72,18 +72,35 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
-    /* Canvas & Global Typography */
+    /* =========================================================================
+       GLOBAL CANVAS & TYPOGRAPHY (SLATE-100 CANVAS FOR PALPABLE CARD DEPTH)
+       ========================================================================= */
     .stApp {
-        background-color: #F8FAFC !important;
+        background-color: #F1F5F9 !important; /* Soft Slate-100 canvas gives tangible depth */
         color: #0F172A !important;
         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     }
 
-    /* Container Spacing */
+    /* Hide Streamlit Default Top Decoration Bar */
+    [data-testid="stDecoration"] {
+        display: none !important;
+    }
+
+    /* Transparent Minimal Streamlit Header */
+    header[data-testid="stHeader"] {
+        background: transparent !important;
+        height: 0px !important;
+        min-height: 0px !important;
+    }
+
+    /* Container Spacing: Pinned to Top */
     .block-container {
-        padding-top: 1rem !important;
-        padding-bottom: 2.5rem !important;
-        max-width: 1440px !important;
+        padding-top: 0rem !important;
+        padding-bottom: 3rem !important;
+        padding-left: 2rem !important;
+        padding-right: 2rem !important;
+        max-width: 1560px !important;
+        margin: 0 auto !important;
     }
 
     /* Headings & High Contrast Readability (WCAG AAA) */
@@ -124,20 +141,24 @@ CUSTOM_CSS = """
     }
 
     /* =========================================================================
-       1. TOP EXECUTIVE NAVBAR
+       1. TOP EXECUTIVE NAVBAR (STICKY FULL-WIDTH)
        ========================================================================= */
     .top-navbar {
+        position: sticky;
+        top: 0;
+        z-index: 999;
         background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 12px 20px;
-        margin-bottom: 14px;
+        border-bottom: 1px solid #E2E8F0;
+        margin-left: -2rem;
+        margin-right: -2rem;
+        padding: 0.85rem 2rem;
+        margin-bottom: 1.25rem;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
-        gap: 12px;
-        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
+        gap: 14px;
+        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05);
     }
     .nav-brand-wrap {
         display: flex;
@@ -145,31 +166,42 @@ CUSTOM_CSS = """
         gap: 12px;
     }
     .nav-brand-badge {
-        width: 38px;
-        height: 38px;
+        width: 42px;
+        height: 42px;
         background: #EFF6FF;
         border: 1px solid #BFDBFE;
-        border-radius: 8px;
+        border-radius: 9px;
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 800;
         color: #1D4ED8;
-        font-size: 1.05rem;
+        font-size: 1.15rem;
         box-shadow: 0 1px 2px rgba(29, 78, 216, 0.08);
     }
     .nav-brand-title {
-        font-size: 1.12rem;
+        font-size: 1.18rem;
         font-weight: 800;
         color: #0F172A;
         letter-spacing: -0.02em;
         line-height: 1.2;
     }
+    .nav-brand-version {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #2563EB;
+        background: #EFF6FF;
+        border: 1px solid #BFDBFE;
+        padding: 2px 7px;
+        border-radius: 5px;
+        vertical-align: middle;
+        margin-left: 6px;
+    }
     .nav-brand-sub {
-        font-size: 0.76rem;
+        font-size: 0.78rem;
         color: #64748B;
         font-weight: 500;
-        margin-top: 1px;
+        margin-top: 2px;
     }
     .nav-telemetry-wrap {
         display: flex;
@@ -181,20 +213,21 @@ CUSTOM_CSS = """
         display: inline-flex;
         align-items: center;
         gap: 6px;
-        padding: 4px 10px;
+        padding: 5px 12px;
         background: #F8FAFC;
         border: 1px solid #E2E8F0;
-        border-radius: 6px;
-        font-size: 0.77rem;
+        border-radius: 7px;
+        font-size: 0.78rem;
         color: #334155;
         font-family: 'Fira Code', 'JetBrains Mono', Consolas, monospace;
-        font-weight: 500;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(15, 23, 42, 0.02);
     }
     .nav-chip-success {
         background: #ECFDF5;
         border-color: #A7F3D0;
         color: #065F46;
-        font-weight: 600;
+        font-weight: 700;
     }
     .live-pulse {
         display: inline-block;
@@ -212,65 +245,113 @@ CUSTOM_CSS = """
     }
 
     /* =========================================================================
-       2. SEAMLESS SUB-NAV TABS
+       2. MODERN UNDERLINE NAVIGATION TABS
        ========================================================================= */
     div[data-baseweb="tab-list"] {
-        background-color: #FFFFFF !important;
-        padding: 5px 6px !important;
-        border-radius: 10px !important;
-        gap: 6px !important;
-        border: 1px solid #E2E8F0 !important;
-        margin-bottom: 20px !important;
-        box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03) !important;
+        background: transparent !important;
+        border-bottom: 1px solid #CBD5E1 !important;
+        border-radius: 0 !important;
+        padding: 0 4px !important;
+        gap: 28px !important;
+        margin-bottom: 1.5rem !important;
+        box-shadow: none !important;
+        border-top: none !important;
+        border-left: none !important;
+        border-right: none !important;
     }
     button[data-baseweb="tab"] {
         color: #64748B !important;
-        font-size: 0.9rem !important;
+        font-size: 0.94rem !important;
         font-weight: 500 !important;
-        padding: 8px 16px !important;
+        padding: 10px 4px !important;
         background-color: transparent !important;
-        border-radius: 7px !important;
+        border-radius: 0 !important;
         border: none !important;
-        transition: all 0.15s ease-in-out !important;
+        border-bottom: 2px solid transparent !important;
+        margin-bottom: -1px !important;
+        transition: color 0.15s ease, border-color 0.15s ease !important;
     }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #1D4ED8 !important;
-        background-color: #F1F5F9 !important;
+        border-bottom: 2px solid #1D4ED8 !important;
         font-weight: 700 !important;
-        box-shadow: inset 0 0 0 1px #E2E8F0 !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
     }
     button[data-baseweb="tab"]:hover {
         color: #0F172A !important;
-        background-color: #F8FAFC !important;
+        background-color: transparent !important;
+        border-bottom-color: #94A3B8 !important;
     }
 
     /* =========================================================================
-       3. WORKBENCH CARD DECK (STREAMLIT BORDERED CONTAINERS)
+       3. SEGMENTED CONTROL FOR RADIO BUTTONS
+       ========================================================================= */
+    div[data-testid="stRadio"] > div[role="radiogroup"] {
+        display: flex !important;
+        flex-direction: row !important;
+        flex-wrap: wrap !important;
+        background: #E2E8F0 !important;
+        padding: 3px !important;
+        border-radius: 9px !important;
+        gap: 3px !important;
+        border: 1px solid #CBD5E1 !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label {
+        background: transparent !important;
+        padding: 7px 16px !important;
+        border-radius: 7px !important;
+        cursor: pointer !important;
+        margin: 0 !important;
+        color: #475569 !important;
+        font-size: 0.85rem !important;
+        font-weight: 500 !important;
+        transition: all 0.15s ease !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        border: none !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label > div:first-child {
+        display: none !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:hover {
+        color: #0F172A !important;
+        background: rgba(255, 255, 255, 0.5) !important;
+    }
+    div[data-testid="stRadio"] > div[role="radiogroup"] > label:has(input:checked) {
+        background: #FFFFFF !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.12), 0 1px 2px rgba(15, 23, 42, 0.08) !important;
+        color: #1D4ED8 !important;
+        font-weight: 700 !important;
+    }
+
+    /* =========================================================================
+       4. WORKBENCH CARD DECK (STREAMLIT BORDERED CONTAINERS)
        ========================================================================= */
     [data-testid="stVerticalBlockBorderWrapper"] > div {
         background-color: #FFFFFF !important;
         border: 1px solid #E2E8F0 !important;
         border-radius: 12px !important;
-        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02) !important;
-        padding: 20px 22px !important;
+        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.06), 0 1px 2px -1px rgba(15, 23, 42, 0.04) !important;
+        padding: 22px 24px !important;
         transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
     }
     [data-testid="stVerticalBlockBorderWrapper"] > div:hover {
         border-color: #CBD5E1 !important;
-        box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03) !important;
+        box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04) !important;
     }
     .card-header-bar {
-        background: #F8FAFC;
+        background: #FAFAFA;
         border-bottom: 1px solid #E2E8F0;
-        margin: -20px -22px 18px -22px;
-        padding: 12px 20px;
+        margin: -22px -24px 18px -24px;
+        padding: 13px 22px;
         border-radius: 11px 11px 0 0;
         display: flex;
         align-items: center;
         justify-content: space-between;
     }
     .card-header-title {
-        font-size: 0.94rem;
+        font-size: 0.96rem;
         font-weight: 700;
         color: #0F172A;
         letter-spacing: -0.01em;
@@ -280,49 +361,54 @@ CUSTOM_CSS = """
     }
     .card-header-tag {
         font-size: 0.72rem;
-        font-weight: 600;
-        color: #64748B;
+        font-weight: 700;
+        color: #475569;
         background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 4px;
-        padding: 2px 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.03em;
-    }
-
-    /* Viewport Frame & Metadata Strip */
-    .viewport-frame {
-        background: #F1F5F9;
-        border: 1px solid #E2E8F0;
-        border-radius: 8px;
-        padding: 10px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 12px;
-    }
-    .metadata-strip {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        align-items: center;
-        margin-bottom: 12px;
-    }
-    .metadata-pill {
-        display: inline-flex;
-        align-items: center;
-        gap: 4px;
-        background: #F8FAFC;
-        border: 1px solid #E2E8F0;
+        border: 1px solid #CBD5E1;
         border-radius: 5px;
         padding: 3px 8px;
-        font-size: 0.74rem;
-        color: #475569;
-        font-family: 'Fira Code', Consolas, monospace;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
     }
-    .metadata-pill strong {
+
+    /* Grid Metadata Chips */
+    .metadata-strip {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 8px;
+        margin-bottom: 14px;
+    }
+    .metadata-pill {
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 8px 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+    .meta-label {
+        font-size: 0.68rem;
+        font-weight: 600;
+        color: #64748B;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .meta-val {
+        font-size: 0.84rem;
+        font-weight: 700;
         color: #0F172A;
+        font-family: 'Fira Code', Consolas, monospace;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+
+    /* Image Viewport Polish */
+    [data-testid="stImage"] img {
+        border-radius: 8px !important;
+        border: 1px solid #E2E8F0 !important;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05) !important;
     }
 
     /* High-Contrast Interactive KPI Stat Cards */
@@ -402,21 +488,27 @@ CUSTOM_CSS = """
     button[kind="primary"],
     .stButton > button[kind="primary"],
     [data-testid="stBaseButton-primary"] {
-        background-color: #1D4ED8 !important;
+        background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%) !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
         border-radius: 8px !important;
-        border: none !important;
-        padding: 0.55rem 1.25rem !important;
-        box-shadow: 0 1px 2px 0 rgba(29, 78, 216, 0.25) !important;
-        transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+        border: 1px solid #1D4ED8 !important;
+        padding: 0.65rem 1.5rem !important;
+        font-size: 0.95rem !important;
+        box-shadow: 0 1px 2px 0 rgba(29, 78, 216, 0.3), inset 0 1px 0 0 rgba(255, 255, 255, 0.15) !important;
+        transition: all 0.15s ease !important;
     }
     button[kind="primary"]:hover,
     .stButton > button[kind="primary"]:hover,
     [data-testid="stBaseButton-primary"]:hover {
-        background-color: #1E40AF !important;
-        color: #FFFFFF !important;
-        box-shadow: 0 2px 4px 0 rgba(29, 78, 216, 0.3) !important;
+        background: linear-gradient(180deg, #1D4ED8 0%, #1E40AF 100%) !important;
+        box-shadow: 0 4px 6px -1px rgba(29, 78, 216, 0.35) !important;
+        transform: translateY(-1px) !important;
+    }
+    button[kind="primary"]:active,
+    .stButton > button[kind="primary"]:active,
+    [data-testid="stBaseButton-primary"]:active {
+        transform: translateY(0px) !important;
     }
     button[kind="primary"]:focus-visible,
     .stButton > button[kind="primary"]:focus-visible,
@@ -429,11 +521,7 @@ CUSTOM_CSS = """
     [data-testid="stBaseButton-primary"] p {
         color: #FFFFFF !important;
         font-weight: 600 !important;
-    }
-
-    /* Sub-tabs within Content */
-    .stTabs [data-baseweb="tab-list"] {
-        margin-bottom: 12px !important;
+        font-size: 0.95rem !important;
     }
 </style>
 """
@@ -545,8 +633,8 @@ st.markdown(f"""
     <div class="nav-brand-wrap">
         <div class="nav-brand-badge">⚡ PV</div>
         <div>
-            <div class="nav-brand-title">Laboratorium Komputasi Paralel & Pemrosesan Citra Digital</div>
-            <div class="nav-brand-sub">FMIPA Universitas Tanjungpura • Multiprocessing Halo (k=1) • {cpu_name}</div>
+            <div class="nav-brand-title">Parallel Vision <span class="nav-brand-version">v2.4</span></div>
+            <div class="nav-brand-sub">Laboratorium Komputasi Paralel & Pemrosesan Citra Digital • FMIPA UNTAN</div>
         </div>
     </div>
     <div class="nav-telemetry-wrap">
@@ -668,9 +756,18 @@ with tab_live:
             mem_size_mb = (image_rgb.nbytes) / (1024 * 1024)
             st.markdown(f"""
             <div class="metadata-strip">
-                <div class="metadata-pill">Citra: <strong>{image_name}</strong></div>
-                <div class="metadata-pill">Dimensi: <strong>{w} × {h} px</strong></div>
-                <div class="metadata-pill">Memori: <strong>{mem_size_mb:.2f} MB</strong></div>
+                <div class="metadata-pill">
+                    <span class="meta-label">Sampel Citra</span>
+                    <span class="meta-val">{image_name}</span>
+                </div>
+                <div class="metadata-pill">
+                    <span class="meta-label">Resolusi Matriks</span>
+                    <span class="meta-val">{w} × {h} px</span>
+                </div>
+                <div class="metadata-pill">
+                    <span class="meta-label">Buffer Memori</span>
+                    <span class="meta-val">{mem_size_mb:.2f} MB</span>
+                </div>
             </div>
             """, unsafe_allow_html=True)
 
