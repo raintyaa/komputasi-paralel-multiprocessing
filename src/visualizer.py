@@ -173,12 +173,11 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
     apply_scientific_plot_style()
     df = _load_and_normalize_dataset(csv_path)
 
-    # Filter data: Alokasi proses P = 4 (atau skenario == 'A')
-    mask = (df["p"] == 4)
+    # Filter data: Khusus data Skenario A (Variasi Resolusi pada P = 4)
     if "scenario" in df.columns and (df["scenario"].astype(str).str.upper() == "A").any():
-        mask = mask | (df["scenario"].astype(str).str.upper() == "A")
-
-    sub_df = df[mask].copy()
+        sub_df = df[df["scenario"].astype(str).str.upper() == "A"].copy()
+    else:
+        sub_df = df[df["p"] == 4].copy()
 
     if sub_df.empty:
         raise ValueError("Data untuk Skenario A (P=4) tidak ditemukan di dalam berkas CSV.")
@@ -192,6 +191,9 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
     x_indices = np.arange(len(target_resolutions))
     x_labels = [f"{r}x{r}" for r in target_resolutions]
 
+    # Simpan nilai per resolusi untuk smart annotation placement
+    res_speedups = {r: {} for r in target_resolutions}
+
     for f_name in target_filters:
         f_data = sub_df[sub_df["filter"] == f_name].sort_values("resolution")
         if f_data.empty:
@@ -201,7 +203,9 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
         y_vals = []
         for r in target_resolutions:
             val_match = f_data[f_data["resolution"] == r]["speedup"]
-            y_vals.append(float(val_match.mean()) if not val_match.empty else np.nan)
+            val_mean = float(val_match.mean()) if not val_match.empty else np.nan
+            y_vals.append(val_mean)
+            res_speedups[r][f_name] = val_mean
 
         style = FILTER_STYLES.get(f_name, {
             "label": f_name,
@@ -212,7 +216,7 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
             "markersize": 6,
         })
 
-        line = ax.plot(
+        ax.plot(
             x_indices,
             y_vals,
             label=style["label"],
@@ -225,20 +229,37 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
             markeredgewidth=1.2,
         )
 
-        # Anotasi nilai Speedup di atas setiap marker
-        for xi, yi in zip(x_indices, y_vals):
-            if not np.isnan(yi):
-                ax.annotate(
-                    f"{yi:.2f}x",
-                    xy=(xi, yi),
-                    xytext=(0, 7),
-                    textcoords="offset points",
-                    ha="center",
-                    va="bottom",
-                    fontsize=8.5,
-                    fontweight="bold",
-                    color=style["color"]
-                )
+    # Anotasi nilai Speedup dengan smart offset agar teks tidak bertubrukan
+    for xi, r in enumerate(target_resolutions):
+        vals_at_r = [(fname, res_speedups[r][fname]) for fname in target_filters if fname in res_speedups[r] and not np.isnan(res_speedups[r][fname])]
+        vals_at_r.sort(key=lambda x: x[1])  # Urutkan dari terendah ke tertinggi
+
+        for rank, (fname, yi) in enumerate(vals_at_r):
+            style = FILTER_STYLES[fname]
+            if rank == 0 and len(vals_at_r) > 1:
+                # Nilai terendah: taruh di bawah marker
+                xy_text = (0, -14)
+                v_align = "top"
+            elif rank == 1 and len(vals_at_r) == 3:
+                # Nilai tengah
+                xy_text = (-10, 8) if (vals_at_r[2][1] - yi) < 0.3 else (0, 7)
+                v_align = "bottom"
+            else:
+                # Nilai tertinggi
+                xy_text = (0, 8)
+                v_align = "bottom"
+
+            ax.annotate(
+                f"{yi:.2f}x",
+                xy=(xi, yi),
+                xytext=xy_text,
+                textcoords="offset points",
+                ha="center",
+                va=v_align,
+                fontsize=8.5,
+                fontweight="bold",
+                color=style["color"]
+            )
 
     # Garis acuan linear ideal P = 4 (opsional sebagai referensi)
     ax.axhline(
@@ -266,11 +287,18 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
     ax.set_ylabel(r"Speedup ($S = T_{serial} / T_{parallel}$)", labelpad=10)
     ax.set_title("Skenario A: Pengaruh Resolusi Citra terhadap Speedup\n(Alokasi Proses Tetap $P = 4$)", pad=14)
 
-    # Batas sumbu Y agar bersih
-    max_y = max(4.5, sub_df["speedup"].max() * 1.15 if not sub_df["speedup"].empty else 4.5)
-    ax.set_ylim(bottom=0.5, top=max_y)
+    # Batas sumbu Y proporsional dan bersih
+    ax.set_ylim(bottom=0.5, top=5.2)
 
-    ax.legend(loc="lower right", framealpha=0.92)
+    # Legend diposisikan di sudut kiri atas (upper left) dengan latar putih agar tidak menutupi kurva data
+    ax.legend(
+        loc="upper left",
+        framealpha=0.95,
+        facecolor="#FFFFFF",
+        edgecolor="#CBD5E1",
+        fontsize=8.5,
+        fancybox=True
+    )
     plt.tight_layout()
 
     _ensure_dir(output_path)

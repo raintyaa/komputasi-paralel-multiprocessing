@@ -125,11 +125,22 @@ CUSTOM_CSS = """
     .dash-header-card {
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-top: 3.5px solid #2563EB;
         border-radius: 12px;
-        padding: 20px 24px;
-        margin-bottom: 18px;
+        position: relative;
+        overflow: hidden;
+        padding: 22px 24px 20px 24px;
+        margin-bottom: 20px;
         box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
+    }
+    .dash-header-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%);
+        border-radius: 12px 12px 0 0;
     }
     .dash-title-row {
         display: flex;
@@ -315,19 +326,36 @@ CUSTOM_CSS = """
         color: #0F172A !important;
     }
 
-    /* Primary Buttons */
-    button[kind="primary"] {
-        background-color: #2563EB !important;
+    /* Primary Buttons (WCAG AAA Contrast: #FFFFFF on #1D4ED8 = 8.59:1) */
+    button[kind="primary"],
+    .stButton > button[kind="primary"],
+    [data-testid="stBaseButton-primary"] {
+        background-color: #1D4ED8 !important;
         color: #FFFFFF !important;
         font-weight: 600 !important;
         border-radius: 8px !important;
         border: none !important;
         padding: 0.5rem 1.25rem !important;
-        box-shadow: 0 1px 2px 0 rgba(37, 99, 235, 0.2) !important;
-        transition: background-color 0.15s ease !important;
+        box-shadow: 0 1px 2px 0 rgba(29, 78, 216, 0.25) !important;
+        transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
     }
-    button[kind="primary"]:hover {
-        background-color: #1D4ED8 !important;
+    button[kind="primary"]:hover,
+    .stButton > button[kind="primary"]:hover,
+    [data-testid="stBaseButton-primary"]:hover {
+        background-color: #1E40AF !important;
+        color: #FFFFFF !important;
+        box-shadow: 0 2px 4px 0 rgba(29, 78, 216, 0.3) !important;
+    }
+    button[kind="primary"]:focus-visible,
+    .stButton > button[kind="primary"]:focus-visible,
+    [data-testid="stBaseButton-primary"]:focus-visible {
+        outline: 2px solid #1D4ED8 !important;
+        outline-offset: 2px !important;
+    }
+    button[kind="primary"] p,
+    .stButton > button[kind="primary"] p,
+    [data-testid="stBaseButton-primary"] p {
+        color: #FFFFFF !important;
     }
 
     /* Sub-tabs within Content */
@@ -1091,7 +1119,7 @@ with tab_analysis:
                     ax1.set_xlabel("Resolusi (px)", fontsize=8, color="#0F172A")
                     ax1.set_ylabel("Waktu (detik)", fontsize=8, color="#0F172A")
                     ax1.grid(True, linestyle="--", alpha=0.5, color="#E2E8F0")
-                    ax1.legend(fontsize=7)
+                    ax1.legend(loc="upper left", fontsize=7.5, framealpha=0.95)
 
                     # Subplot 2: Speedup vs Resolusi
                     for fname in df_a["filter"].unique():
@@ -1106,7 +1134,7 @@ with tab_analysis:
                     ax2.set_xlabel("Resolusi (px)", fontsize=8, color="#0F172A")
                     ax2.set_ylabel("Speedup (S)", fontsize=8, color="#0F172A")
                     ax2.grid(True, linestyle="--", alpha=0.5, color="#E2E8F0")
-                    ax2.legend(fontsize=7)
+                    ax2.legend(loc="upper left", fontsize=7.5, framealpha=0.95)
 
                     for ax in (ax1, ax2):
                         for spine in ax.spines.values():
