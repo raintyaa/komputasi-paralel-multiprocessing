@@ -126,21 +126,9 @@ CUSTOM_CSS = """
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
         border-radius: 12px;
-        position: relative;
-        overflow: hidden;
-        padding: 22px 24px 20px 24px;
+        padding: 22px 24px;
         margin-bottom: 20px;
         box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
-    }
-    .dash-header-card::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 4px;
-        background: linear-gradient(90deg, #2563EB 0%, #3B82F6 100%);
-        border-radius: 12px 12px 0 0;
     }
     .dash-title-row {
         display: flex;
@@ -249,20 +237,6 @@ CUSTOM_CSS = """
         border-radius: 10px;
         padding: 16px 18px;
         box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
-        position: relative;
-        overflow: hidden;
-    }
-    .metric-card::before {
-        content: '';
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        height: 3px;
-        background: #2563EB;
-    }
-    .metric-card-success::before {
-        background: #059669;
     }
     .metric-label {
         font-size: 0.73rem;
