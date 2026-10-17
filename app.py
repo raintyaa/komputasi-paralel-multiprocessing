@@ -68,6 +68,8 @@ st.set_page_config(
 # -----------------------------------------------------------------------------
 # 2. CUSTOM CSS: MODERN EXECUTIVE WHITE DASHBOARD (UI/UX PRO MAX)
 # -----------------------------------------------------------------------------
+# 2. CUSTOM CSS: MODERN EXECUTIVE MINIMALIST DASHBOARD (IMPECCABLE & UI/UX PRO MAX)
+# -----------------------------------------------------------------------------
 CUSTOM_CSS = """
 <style>
     /* Canvas & Global Typography */
@@ -79,7 +81,7 @@ CUSTOM_CSS = """
 
     /* Container Spacing */
     .block-container {
-        padding-top: 1.25rem !important;
+        padding-top: 1rem !important;
         padding-bottom: 2.5rem !important;
         max-width: 1440px !important;
     }
@@ -109,7 +111,7 @@ CUSTOM_CSS = """
         line-height: 1.65;
         color: #475569 !important;
         font-size: 0.88rem;
-        margin-bottom: 1rem;
+        margin-bottom: 1.25rem;
     }
     code {
         background-color: #F1F5F9 !important;
@@ -121,47 +123,61 @@ CUSTOM_CSS = """
         font-size: 0.86em !important;
     }
 
-    /* Executive Dashboard Top Header Bar */
-    .dash-header-card {
+    /* =========================================================================
+       1. TOP EXECUTIVE NAVBAR
+       ========================================================================= */
+    .top-navbar {
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
         border-radius: 12px;
-        padding: 22px 24px;
-        margin-bottom: 20px;
-        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.05), 0 1px 2px -1px rgba(15, 23, 42, 0.05);
-    }
-    .dash-title-row {
+        padding: 12px 20px;
+        margin-bottom: 14px;
         display: flex;
         align-items: center;
         justify-content: space-between;
         flex-wrap: wrap;
         gap: 12px;
+        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02);
     }
-    .dash-title {
-        font-size: 1.3rem;
+    .nav-brand-wrap {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+    .nav-brand-badge {
+        width: 38px;
+        height: 38px;
+        background: #EFF6FF;
+        border: 1px solid #BFDBFE;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 800;
+        color: #1D4ED8;
+        font-size: 1.05rem;
+        box-shadow: 0 1px 2px rgba(29, 78, 216, 0.08);
+    }
+    .nav-brand-title {
+        font-size: 1.12rem;
         font-weight: 800;
         color: #0F172A;
         letter-spacing: -0.02em;
-        margin-bottom: 4px;
+        line-height: 1.2;
     }
-    .dash-subtitle {
-        font-size: 0.88rem;
-        color: #475569;
-        line-height: 1.5;
-        max-width: 85ch;
+    .nav-brand-sub {
+        font-size: 0.76rem;
+        color: #64748B;
+        font-weight: 500;
+        margin-top: 1px;
     }
-
-    /* Telemetry Chips */
-    .telemetry-strip {
+    .nav-telemetry-wrap {
         display: flex;
+        align-items: center;
         flex-wrap: wrap;
         gap: 8px;
-        align-items: center;
-        margin-top: 14px;
-        padding-top: 12px;
-        border-top: 1px solid #F1F5F9;
     }
-    .telemetry-chip {
+    .nav-telemetry-chip {
         display: inline-flex;
         align-items: center;
         gap: 6px;
@@ -169,52 +185,49 @@ CUSTOM_CSS = """
         background: #F8FAFC;
         border: 1px solid #E2E8F0;
         border-radius: 6px;
-        font-size: 0.78rem;
+        font-size: 0.77rem;
         color: #334155;
-        font-family: 'Fira Code', Consolas, monospace;
+        font-family: 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+        font-weight: 500;
     }
-    .telemetry-chip strong {
-        color: #0F172A;
+    .nav-chip-success {
+        background: #ECFDF5;
+        border-color: #A7F3D0;
+        color: #065F46;
+        font-weight: 600;
     }
-
-    /* Modern Card Container */
-    .dash-card {
-        background: #FFFFFF;
-        border: 1px solid #E2E8F0;
-        border-radius: 12px;
-        padding: 20px 22px;
-        margin-bottom: 18px;
-        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.04);
-        transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    .live-pulse {
+        display: inline-block;
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background-color: #10B981;
+        box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7);
+        animation: pulse-ring 2s infinite cubic-bezier(0.66, 0, 0, 1);
     }
-    .dash-card:hover {
-        border-color: #CBD5E1;
-        box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.06), 0 2px 4px -2px rgba(15, 23, 42, 0.04);
-    }
-    .card-title {
-        font-size: 1.02rem;
-        font-weight: 700;
-        color: #0F172A;
-        margin-bottom: 12px;
-        display: flex;
-        align-items: center;
-        gap: 8px;
+    @keyframes pulse-ring {
+        0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+        70% { transform: scale(1); box-shadow: 0 0 0 5px rgba(16, 185, 129, 0); }
+        100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
     }
 
-    /* Segmented Control Navigation Tabs */
+    /* =========================================================================
+       2. SEAMLESS SUB-NAV TABS
+       ========================================================================= */
     div[data-baseweb="tab-list"] {
-        background-color: #F1F5F9 !important;
+        background-color: #FFFFFF !important;
         padding: 5px 6px !important;
         border-radius: 10px !important;
         gap: 6px !important;
         border: 1px solid #E2E8F0 !important;
         margin-bottom: 20px !important;
+        box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03) !important;
     }
     button[data-baseweb="tab"] {
-        color: #475569 !important;
-        font-size: 0.92rem !important;
+        color: #64748B !important;
+        font-size: 0.9rem !important;
         font-weight: 500 !important;
-        padding: 8px 18px !important;
+        padding: 8px 16px !important;
         background-color: transparent !important;
         border-radius: 7px !important;
         border: none !important;
@@ -222,24 +235,106 @@ CUSTOM_CSS = """
     }
     button[data-baseweb="tab"][aria-selected="true"] {
         color: #1D4ED8 !important;
-        background-color: #FFFFFF !important;
+        background-color: #F1F5F9 !important;
         font-weight: 700 !important;
-        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08) !important;
+        box-shadow: inset 0 0 0 1px #E2E8F0 !important;
     }
     button[data-baseweb="tab"]:hover {
         color: #0F172A !important;
+        background-color: #F8FAFC !important;
+    }
+
+    /* =========================================================================
+       3. WORKBENCH CARD DECK (STREAMLIT BORDERED CONTAINERS)
+       ========================================================================= */
+    [data-testid="stVerticalBlockBorderWrapper"] > div {
+        background-color: #FFFFFF !important;
+        border: 1px solid #E2E8F0 !important;
+        border-radius: 12px !important;
+        box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.04), 0 1px 2px -1px rgba(15, 23, 42, 0.02) !important;
+        padding: 20px 22px !important;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+    }
+    [data-testid="stVerticalBlockBorderWrapper"] > div:hover {
+        border-color: #CBD5E1 !important;
+        box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -2px rgba(15, 23, 42, 0.03) !important;
+    }
+    .card-header-bar {
+        background: #F8FAFC;
+        border-bottom: 1px solid #E2E8F0;
+        margin: -20px -22px 18px -22px;
+        padding: 12px 20px;
+        border-radius: 11px 11px 0 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .card-header-title {
+        font-size: 0.94rem;
+        font-weight: 700;
+        color: #0F172A;
+        letter-spacing: -0.01em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .card-header-tag {
+        font-size: 0.72rem;
+        font-weight: 600;
+        color: #64748B;
+        background: #FFFFFF;
+        border: 1px solid #E2E8F0;
+        border-radius: 4px;
+        padding: 2px 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    /* Viewport Frame & Metadata Strip */
+    .viewport-frame {
+        background: #F1F5F9;
+        border: 1px solid #E2E8F0;
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 12px;
+    }
+    .metadata-strip {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+    .metadata-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        background: #F8FAFC;
+        border: 1px solid #E2E8F0;
+        border-radius: 5px;
+        padding: 3px 8px;
+        font-size: 0.74rem;
+        color: #475569;
+        font-family: 'Fira Code', Consolas, monospace;
+    }
+    .metadata-pill strong {
+        color: #0F172A;
     }
 
     /* High-Contrast Interactive KPI Stat Cards */
     .metric-card {
         background: #FFFFFF;
         border: 1px solid #E2E8F0;
-        border-radius: 10px;
-        padding: 16px 18px;
+        border-radius: 8px;
+        padding: 14px 16px;
         box-shadow: 0 1px 2px 0 rgba(15, 23, 42, 0.03);
     }
     .metric-label {
-        font-size: 0.73rem;
+        font-size: 0.72rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.05em;
@@ -247,16 +342,16 @@ CUSTOM_CSS = """
         margin-bottom: 4px;
     }
     .metric-value {
-        font-size: 1.7rem;
+        font-size: 1.6rem;
         font-weight: 800;
         color: #0F172A;
         font-family: 'Fira Code', 'JetBrains Mono', Consolas, monospace;
         line-height: 1.2;
     }
     .metric-sub {
-        font-size: 0.78rem;
-        color: #475569;
-        margin-top: 6px;
+        font-size: 0.75rem;
+        color: #64748B;
+        margin-top: 4px;
     }
 
     /* Verification Status Badges */
@@ -266,7 +361,7 @@ CUSTOM_CSS = """
         gap: 6px;
         padding: 6px 14px;
         border-radius: 8px;
-        font-size: 0.84rem;
+        font-size: 0.82rem;
         font-weight: 600;
         font-family: 'Fira Code', Consolas, monospace;
         margin-bottom: 12px;
@@ -291,16 +386,19 @@ CUSTOM_CSS = """
     div[data-testid="stRadio"] label, div[data-testid="stSelectbox"] label, div[data-testid="stSlider"] label {
         color: #0F172A !important;
         font-weight: 600 !important;
-        font-size: 0.88rem !important;
+        font-size: 0.86rem !important;
     }
     div[data-baseweb="select"] > div {
         background-color: #FFFFFF !important;
         border: 1px solid #CBD5E1 !important;
-        border-radius: 8px !important;
+        border-radius: 7px !important;
         color: #0F172A !important;
     }
+    div[data-baseweb="select"] > div:hover {
+        border-color: #94A3B8 !important;
+    }
 
-    /* Primary Buttons (WCAG AAA Contrast: #FFFFFF on #1D4ED8 = 8.59:1) */
+    /* Primary Action Buttons (WCAG AAA Contrast: #FFFFFF on #1D4ED8 = 8.59:1) */
     button[kind="primary"],
     .stButton > button[kind="primary"],
     [data-testid="stBaseButton-primary"] {
@@ -309,7 +407,7 @@ CUSTOM_CSS = """
         font-weight: 600 !important;
         border-radius: 8px !important;
         border: none !important;
-        padding: 0.5rem 1.25rem !important;
+        padding: 0.55rem 1.25rem !important;
         box-shadow: 0 1px 2px 0 rgba(29, 78, 216, 0.25) !important;
         transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
     }
@@ -330,6 +428,7 @@ CUSTOM_CSS = """
     .stButton > button[kind="primary"] p,
     [data-testid="stBaseButton-primary"] p {
         color: #FFFFFF !important;
+        font-weight: 600 !important;
     }
 
     /* Sub-tabs within Content */
@@ -442,27 +541,24 @@ cpu_name = "Intel Core i5-13420H (13th Gen)"
 os_name = sys.platform.capitalize()
 
 st.markdown(f"""
-<div class="dash-header-card">
-    <div class="dash-title-row">
+<header class="top-navbar">
+    <div class="nav-brand-wrap">
+        <div class="nav-brand-badge">⚡ PV</div>
         <div>
-            <div class="dash-title">⚡ Laboratorium Komputasi Paralel & Pemrosesan Citra Digital</div>
-            <div class="dash-subtitle">
-                Platform Terpadu Pengujian Empiris Multiprocessing dengan Dekomposisi Baris Horizontal & Boundary Halo (k=1)
-                <br><strong>Fakultas Matematika dan Ilmu Pengetahuan Alam, Universitas Tanjungpura (FMIPA UNTAN)</strong>
-            </div>
-        </div>
-        <div>
-            <span class="badge-pill badge-success">● System Ready / Deterministic</span>
+            <div class="nav-brand-title">Laboratorium Komputasi Paralel & Pemrosesan Citra Digital</div>
+            <div class="nav-brand-sub">FMIPA Universitas Tanjungpura • Multiprocessing Halo (k=1) • {cpu_name}</div>
         </div>
     </div>
-    <div class="telemetry-strip">
-        <div class="telemetry-chip">💻 CPU: <strong>{cpu_name}</strong></div>
-        <div class="telemetry-chip">⚙️ Arsitektur: <strong>4 P-Cores + 4 E-Cores ({logical_cores} Threads)</strong></div>
-        <div class="telemetry-chip">🧠 RAM: <strong>{ram_gb:.1f} GB</strong></div>
-        <div class="telemetry-chip">🪟 OS: <strong>Windows (Python {sys.version.split()[0]})</strong></div>
-        <div class="telemetry-chip">📁 Dataset: <strong>120 Berkas PNG (30 Citra Multiresolusi)</strong></div>
+    <div class="nav-telemetry-wrap">
+        <div class="nav-telemetry-chip nav-chip-success">
+            <span class="live-pulse"></span> Deterministic Engine Ready
+        </div>
+        <div class="nav-telemetry-chip">💻 {cpu_name}</div>
+        <div class="nav-telemetry-chip">⚙️ 8 Cores / {logical_cores}T</div>
+        <div class="nav-telemetry-chip">🧠 {ram_gb:.1f} GB RAM</div>
+        <div class="nav-telemetry-chip">📁 120 Dataset PNG</div>
     </div>
-</div>
+</header>
 """, unsafe_allow_html=True)
 
 
@@ -483,9 +579,12 @@ tab_live, tab_bench, tab_analysis, tab_arch = st.tabs([
 with tab_live:
     col_input, col_output = st.columns([1, 1], gap="medium")
 
-    with col_input:
+    with col_input.container(border=True):
         st.markdown("""
-        <div class="card-title">1. Konfigurasi Input & Worker Proses</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">⚙️ Konfigurasi Parameter Eksperimen</div>
+            <div class="card-header-tag">Control Plane</div>
+        </div>
         """, unsafe_allow_html=True)
 
         source_type = st.radio(
@@ -556,17 +655,22 @@ with tab_live:
 
         btn_run = st.button("🚀 Jalankan Komputasi (Serial vs Paralel)", type="primary", use_container_width=True)
 
-    with col_output:
+    with col_output.container(border=True):
         st.markdown("""
-        <div class="card-title">2. Visualisasi Metrik & Validasi Hasil</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">🖼️ Viewport Citra & Status Bit-Identik</div>
+            <div class="card-header-tag">Output Telemetry</div>
+        </div>
         """, unsafe_allow_html=True)
 
         if image_rgb is not None:
             h, w = image_rgb.shape[:2]
             mem_size_mb = (image_rgb.nbytes) / (1024 * 1024)
             st.markdown(f"""
-            <div style="font-family: 'Fira Code', Consolas, monospace; font-size: 0.82rem; color: #475569; margin-bottom: 12px;">
-                Citra: <strong>{image_name}</strong> | Dimensi: <strong>{w} × {h} px</strong> | Memori: <strong>{mem_size_mb:.2f} MB</strong>
+            <div class="metadata-strip">
+                <div class="metadata-pill">Citra: <strong>{image_name}</strong></div>
+                <div class="metadata-pill">Dimensi: <strong>{w} × {h} px</strong></div>
+                <div class="metadata-pill">Memori: <strong>{mem_size_mb:.2f} MB</strong></div>
             </div>
             """, unsafe_allow_html=True)
 
@@ -712,9 +816,12 @@ with tab_bench:
 
     col_bench_cfg, col_bench_log = st.columns([1, 2], gap="large")
 
-    with col_bench_cfg:
+    with col_bench_cfg.container(border=True):
         st.markdown("""
-        <div class="card-title">⚙️ Konfigurasi Eksperimen Benchmark</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">⚙️ Konfigurasi Benchmark Skenario</div>
+            <div class="card-header-tag">Orchestrator</div>
+        </div>
         """, unsafe_allow_html=True)
 
         dataset_choice = st.radio(
@@ -752,9 +859,12 @@ with tab_bench:
 
         btn_start_benchmark = st.button("🚀 Jalankan Eksperimen Pengujian", type="primary", use_container_width=True)
 
-    with col_bench_log:
+    with col_bench_log.container(border=True):
         st.markdown("""
-        <div class="card-title">📋 Status Eksekusi & Data Hasil Pengujian</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">📋 Data Empiris & Riwayat Pengujian</div>
+            <div class="card-header-tag">Execution Logger</div>
+        </div>
         """, unsafe_allow_html=True)
 
         csv_path = os.path.join(BASE_DIR, "results", "benchmark_results_latest.csv")
@@ -987,9 +1097,12 @@ with tab_analysis:
     col_sim_side, col_graph_main = st.columns([1, 1], gap="large")
 
     # 1. Simulator Hukum Amdahl
-    with col_sim_side:
+    with col_sim_side.container(border=True):
         st.markdown("""
-        <div class="card-title">1. Simulator Kurva Hukum Amdahl Interaktif</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">📐 Simulator Kurva Hukum Amdahl</div>
+            <div class="card-header-tag">Theoretical Limit</div>
+        </div>
         """, unsafe_allow_html=True)
 
         st.latex(r"S(P) = \frac{1}{(1 - f) + \frac{f}{P}}, \quad S_{\text{maks}} = \lim_{P \to \infty} S(P) = \frac{1}{1 - f}")
@@ -1049,9 +1162,12 @@ with tab_analysis:
         st.pyplot(fig_amd)
 
     # 2. Grafik Dinamis Hasil Eksperimen
-    with col_graph_main:
+    with col_graph_main.container(border=True):
         st.markdown("""
-        <div class="card-title">2. Grafik Hasil Pengujian Dinamis (300 DPI Style)</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">📈 Visualisasi Hasil Pengujian Dinamis</div>
+            <div class="card-header-tag">Empirical Plots</div>
+        </div>
         """, unsafe_allow_html=True)
 
         selected_plot = st.selectbox(
@@ -1194,9 +1310,12 @@ with tab_arch:
 
     col_arch_hw, col_arch_halo = st.columns(2, gap="large")
 
-    with col_arch_hw:
+    with col_arch_hw.container(border=True):
         st.markdown("""
-        <div class="card-title">1. Topologi Prosesor Heterogen (Intel i5-13420H)</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">💻 Topologi Prosesor Heterogen</div>
+            <div class="card-header-tag">Intel Raptor Lake</div>
+        </div>
         """, unsafe_allow_html=True)
 
         st.markdown("""
@@ -1219,9 +1338,12 @@ with tab_arch:
         > Pada $P=1, 2, 4$, OS mengalokasikan beban kerja ke core performa tinggi (P-Cores). Pada $P=8$ dan $P=12$, sistem mulai mengeksekusi worker di E-Cores dan *hyper-threads*, di mana frekuensi clock lebih rendah (3.4 GHz vs 4.6 GHz) dan terjadi perebutan *shared L3 cache*. Hal ini secara ilmiah membuktikan **Hukum Amdahl** dan **Overhead Sinkronisasi IPC**.
         """)
 
-    with col_arch_halo:
+    with col_arch_halo.container(border=True):
         st.markdown("""
-        <div class="card-title">2. Dekomposisi Spasial Baris & Boundary Halo (k=1)</div>
+        <div class="card-header-bar">
+            <div class="card-header-title">🧩 Dekomposisi Baris & Boundary Halo</div>
+            <div class="card-header-tag">k=1 Halo Mechanism</div>
+        </div>
         """, unsafe_allow_html=True)
 
         st.markdown("""
@@ -1246,17 +1368,22 @@ with tab_arch:
         Hasil verifikasi membuktikan $\Delta_{\max} = 0.000000$ (100% bit-identik dengan eksekusi serial).
         """)
 
-    st.markdown("---")
-    st.markdown("""
-    <div class="card-title">3. Panduan Tanya Jawab Akademik (Ujian / Evaluasi Dosen)</div>
-    """, unsafe_allow_html=True)
+    st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
-    with st.expander("Pertanyaan: 'Mengapa efisiensi pada citra kecil (512x512) bernilai rendah atau speedup < 1x?'", expanded=False):
+    with st.container(border=True):
         st.markdown("""
-        **Jawaban:** Pada citra 512×512 (beban komputasi ~0.006 detik), waktu untuk serialisasi memori (*pickling*), partisi matriks, dan pengiriman buffer array melalui IPC (*Inter-Process Communication*) jauh lebih besar daripada waktu komputasi aritmatika filter itu sendiri. Ini membuktikan prinsip bahwa **komputasi paralel hanya memberikan percepatan signifikan jika rasio komputasi terhadap komunikasi ($T_{\\text{comp}} / T_{\\text{comm}}$) bernilai tinggi**, seperti yang terlihat pada citra 2048px dan 4096px di mana speedup mencapai hingga **3.06×**.
-        """)
+        <div class="card-header-bar">
+            <div class="card-header-title">🎓 Panduan Pembelaan Akademik (Evaluasi Dosen)</div>
+            <div class="card-header-tag">Academic Defense FAQ</div>
+        </div>
+        """, unsafe_allow_html=True)
 
-    with st.expander("Pertanyaan: 'Mengapa pengujian menggunakan arsitektur pre-warmed pool?'", expanded=False):
-        st.markdown("""
-        **Jawaban:** Pada sistem operasi Windows, arsitektur multiprocessing menggunakan metode `spawn`, bukan `fork` seperti pada Linux. Pembuatan proses Python baru (*cold spawn*) membutuhkan inisialisasi runtime sebesar 1.5 hingga 2.5 detik. Jika waktu spawn dimasukkan ke dalam blok pengukuran, ia akan mengaburkan pengukuran murni algoritma paralel. Dengan *pre-warmed pool*, kita mengukur efisiensi komputasi murni (*pure algorithmic speedup*) secara adil.
-        """)
+        with st.expander("Pertanyaan: 'Mengapa efisiensi pada citra kecil (512x512) bernilai rendah atau speedup < 1x?'", expanded=False):
+            st.markdown("""
+            **Jawaban:** Pada citra 512×512 (beban komputasi ~0.006 detik), waktu untuk serialisasi memori (*pickling*), partisi matriks, dan pengiriman buffer array melalui IPC (*Inter-Process Communication*) jauh lebih besar daripada waktu komputasi aritmatika filter itu sendiri. Ini membuktikan prinsip bahwa **komputasi paralel hanya memberikan percepatan signifikan jika rasio komputasi terhadap komunikasi ($T_{\\text{comp}} / T_{\\text{comm}}$) bernilai tinggi**, seperti yang terlihat pada citra 2048px dan 4096px di mana speedup mencapai hingga **3.06×**.
+            """)
+
+        with st.expander("Pertanyaan: 'Mengapa pengujian menggunakan arsitektur pre-warmed pool?'", expanded=False):
+            st.markdown("""
+            **Jawaban:** Pada sistem operasi Windows, arsitektur multiprocessing menggunakan metode `spawn`, bukan `fork` seperti pada Linux. Pembuatan proses Python baru (*cold spawn*) membutuhkan inisialisasi runtime sebesar 1.5 hingga 2.5 detik. Jika waktu spawn dimasukkan ke dalam blok pengukuran, ia akan mengaburkan pengukuran murni algoritma paralel. Dengan *pre-warmed pool*, kita mengukur efisiensi komputasi murni (*pure algorithmic speedup*) secara adil.
+            """)
