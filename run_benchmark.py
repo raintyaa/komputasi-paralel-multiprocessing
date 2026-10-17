@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import argparse
+import multiprocessing
 import cv2
 import numpy as np
 import pandas as pd
@@ -87,12 +88,13 @@ def run_single_experiment(
     filter_info: dict,
     p_workers: int,
     t_serial_cached: float = None,
-    res_serial_cached: np.ndarray = None
+    res_serial_cached: np.ndarray = None,
+    existing_pool: multiprocessing.Pool = None
 ) -> dict:
     """
     Menjalankan 1 perlakuan pengujian eksperimen terkontrol:
     1. Mengukur Serial Baseline (jika belum ada di cache)
-    2. Menjalankan Paralel dengan pemantauan CPU latar belakang
+    2. Menjalankan Paralel dengan pemantauan CPU latar belakang (mendukung pre-warmed pool)
     3. Memvalidasi keidentikan bit-per-bit hasil
     4. Menghitung metrik performa (Speedup, Efisiensi, Overhead)
     """
@@ -135,7 +137,8 @@ def run_single_experiment(
         image=image,
         filter_func=filter_func,
         p_processes=p_workers,
-        kernel_radius=k_radius
+        kernel_radius=k_radius,
+        existing_pool=existing_pool
     )
     cpu_stats = cpu_mon.stop()
 
@@ -189,47 +192,51 @@ def execute_full_benchmark(quick_mode: bool = False) -> pd.DataFrame:
     print(">>> MENJALANKAN SKENARIO A: PENGARUH RESOLUSI CITRA (P = 4 Inti Pekerja)")
     print("-"*80)
 
-    for res in resolutions_a:
-        img_path = dataset_paths[res]
-        print(f"\n[+] Memuat citra resolusi {res}x{res} piksel dari disk...")
-        img_rgb = load_image_rgb(img_path)
+    # Inisialisasi pool 4 worker sekali di awal (warm pool)
+    with multiprocessing.Pool(processes=4) as pool_4:
+        _ = pool_4.map(abs, [1, 2, 3, 4])  # Warmup worker
+        for res in resolutions_a:
+            img_path = dataset_paths[res]
+            print(f"\n[+] Memuat citra resolusi {res}x{res} piksel dari disk...")
+            img_rgb = load_image_rgb(img_path)
 
-        for f_info in FILTERS_CONFIG:
-            f_name = f_info["name"]
-            print(f"    -> Menguji Filter: {f_name:<14} | Resolusi: {res}x{res} | P = 4...", end=" ", flush=True)
+            for f_info in FILTERS_CONFIG:
+                f_name = f_info["name"]
+                print(f"    -> Menguji Filter: {f_name:<14} | Resolusi: {res}x{res} | P = 4...", end=" ", flush=True)
 
-            cache_key = (f_name, res)
-            cached = serial_cache.get(cache_key, (None, None))
+                cache_key = (f_name, res)
+                cached = serial_cache.get(cache_key, (None, None))
 
-            res_data = run_single_experiment(
-                image=img_rgb,
-                filter_info=f_info,
-                p_workers=4,
-                t_serial_cached=cached[0],
-                res_serial_cached=cached[1]
-            )
+                res_data = run_single_experiment(
+                    image=img_rgb,
+                    filter_info=f_info,
+                    p_workers=4,
+                    t_serial_cached=cached[0],
+                    res_serial_cached=cached[1],
+                    existing_pool=pool_4
+                )
 
-            # Simpan cache serial
-            if cache_key not in serial_cache:
-                serial_cache[cache_key] = (res_data["t_serial_base"], res_data["res_serial"])
+                # Simpan cache serial
+                if cache_key not in serial_cache:
+                    serial_cache[cache_key] = (res_data["t_serial_base"], res_data["res_serial"])
 
-            records.append({
-                "scenario": "A",
-                "filter": f_name,
-                "resolution": res,
-                "p": 4,
-                "t_serial": res_data["t_serial"],
-                "t_parallel": res_data["t_parallel"],
-                "speedup": res_data["speedup"],
-                "efficiency": res_data["efficiency"],
-                "overhead": res_data["overhead"],
-                "cpu_utilization": res_data["cpu_utilization"],
-                "is_identical": res_data["is_identical"],
-                "max_diff": res_data["max_diff"]
-            })
+                records.append({
+                    "scenario": "A",
+                    "filter": f_name,
+                    "resolution": res,
+                    "p": 4,
+                    "t_serial": res_data["t_serial"],
+                    "t_parallel": res_data["t_parallel"],
+                    "speedup": res_data["speedup"],
+                    "efficiency": res_data["efficiency"],
+                    "overhead": res_data["overhead"],
+                    "cpu_utilization": res_data["cpu_utilization"],
+                    "is_identical": res_data["is_identical"],
+                    "max_diff": res_data["max_diff"]
+                })
 
-            status_str = "IDENTIK" if res_data["is_identical"] else "FAIL"
-            print(f"Selesai! Ts={res_data['t_serial']:.4f}s | Tp={res_data['t_parallel']:.4f}s | Speedup={res_data['speedup']:.2f}x | Valid: {status_str}")
+                status_str = "IDENTIK" if res_data["is_identical"] else "FAIL"
+                print(f"Selesai! Ts={res_data['t_serial']:.4f}s | Tp={res_data['t_parallel']:.4f}s | Speedup={res_data['speedup']:.2f}x | Valid: {status_str}")
 
     # ==========================================================================
     # 2. SKENARIO B: Skalabilitas Jumlah Proses Pekerja (P = 1, 2, 4, 8 pada Res 2048)
@@ -241,45 +248,80 @@ def execute_full_benchmark(quick_mode: bool = False) -> pd.DataFrame:
     img_b_path = dataset_paths[base_res_b]
     img_b_rgb = load_image_rgb(img_b_path)
 
-    for f_info in FILTERS_CONFIG:
-        f_name = f_info["name"]
-        print(f"\n[*] Filter: {f_name}")
+    for p in workers_b:
+        print(f"\n[*] Menguji Alokasi P = {p} Proses Pekerja:")
+        if p == 1:
+            for f_info in FILTERS_CONFIG:
+                f_name = f_info["name"]
+                print(f"    -> Filter: {f_name:<14} | P = 1...", end=" ", flush=True)
 
-        cache_key = (f_name, base_res_b)
-        cached = serial_cache.get(cache_key, (None, None))
+                cache_key = (f_name, base_res_b)
+                cached = serial_cache.get(cache_key, (None, None))
 
-        for p in workers_b:
-            print(f"    -> P = {p} Proses Pekerja...", end=" ", flush=True)
+                res_data = run_single_experiment(
+                    image=img_b_rgb,
+                    filter_info=f_info,
+                    p_workers=1,
+                    t_serial_cached=cached[0],
+                    res_serial_cached=cached[1]
+                )
 
-            res_data = run_single_experiment(
-                image=img_b_rgb,
-                filter_info=f_info,
-                p_workers=p,
-                t_serial_cached=cached[0],
-                res_serial_cached=cached[1]
-            )
+                if cache_key not in serial_cache:
+                    serial_cache[cache_key] = (res_data["t_serial_base"], res_data["res_serial"])
+                    cached = serial_cache[cache_key]
 
-            if cache_key not in serial_cache:
-                serial_cache[cache_key] = (res_data["t_serial_base"], res_data["res_serial"])
-                cached = serial_cache[cache_key]
+                records.append({
+                    "scenario": "B",
+                    "filter": f_name,
+                    "resolution": base_res_b,
+                    "p": 1,
+                    "t_serial": res_data["t_serial"],
+                    "t_parallel": res_data["t_parallel"],
+                    "speedup": res_data["speedup"],
+                    "efficiency": res_data["efficiency"],
+                    "overhead": res_data["overhead"],
+                    "cpu_utilization": res_data["cpu_utilization"],
+                    "is_identical": res_data["is_identical"],
+                    "max_diff": res_data["max_diff"]
+                })
 
-            records.append({
-                "scenario": "B",
-                "filter": f_name,
-                "resolution": base_res_b,
-                "p": p,
-                "t_serial": res_data["t_serial"],
-                "t_parallel": res_data["t_parallel"],
-                "speedup": res_data["speedup"],
-                "efficiency": res_data["efficiency"],
-                "overhead": res_data["overhead"],
-                "cpu_utilization": res_data["cpu_utilization"],
-                "is_identical": res_data["is_identical"],
-                "max_diff": res_data["max_diff"]
-            })
+                print(f"Selesai! Tp={res_data['t_parallel']:.4f}s | Speedup={res_data['speedup']:.2f}x | Valid: IDENTIK")
+        else:
+            with multiprocessing.Pool(processes=p) as pool_p:
+                _ = pool_p.map(abs, range(p))  # Warmup pool
+                for f_info in FILTERS_CONFIG:
+                    f_name = f_info["name"]
+                    print(f"    -> Filter: {f_name:<14} | P = {p}...", end=" ", flush=True)
 
-            status_str = "IDENTIK" if res_data["is_identical"] else "FAIL"
-            print(f"Selesai! Tp={res_data['t_parallel']:.4f}s | Speedup={res_data['speedup']:.2f}x | CPU={res_data['cpu_utilization']:.1f}% | Valid: {status_str}")
+                    cache_key = (f_name, base_res_b)
+                    cached = serial_cache.get(cache_key, (None, None))
+
+                    res_data = run_single_experiment(
+                        image=img_b_rgb,
+                        filter_info=f_info,
+                        p_workers=p,
+                        t_serial_cached=cached[0],
+                        res_serial_cached=cached[1],
+                        existing_pool=pool_p
+                    )
+
+                    records.append({
+                        "scenario": "B",
+                        "filter": f_name,
+                        "resolution": base_res_b,
+                        "p": p,
+                        "t_serial": res_data["t_serial"],
+                        "t_parallel": res_data["t_parallel"],
+                        "speedup": res_data["speedup"],
+                        "efficiency": res_data["efficiency"],
+                        "overhead": res_data["overhead"],
+                        "cpu_utilization": res_data["cpu_utilization"],
+                        "is_identical": res_data["is_identical"],
+                        "max_diff": res_data["max_diff"]
+                    })
+
+                    status_str = "IDENTIK" if res_data["is_identical"] else "FAIL"
+                    print(f"Selesai! Tp={res_data['t_parallel']:.4f}s | Speedup={res_data['speedup']:.2f}x | CPU={res_data['cpu_utilization']:.1f}% | Valid: {status_str}")
 
     # ==========================================================================
     # 3. SKENARIO C: Analisis Kompleksitas & Overhead (P = 4, Res 2048)
@@ -304,8 +346,17 @@ def execute_full_benchmark(quick_mode: bool = False) -> pd.DataFrame:
 def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_results.csv"):
     """Menyimpan hasil ke CSV dan memicu pembuatan grafik ilmiah 300 DPI."""
     os.makedirs(os.path.dirname(os.path.abspath(output_csv)), exist_ok=True)
-    df.to_csv(output_csv, index=False)
-    print(f"\n[+] Seluruh data benchmark berhasil disimpan ke: {os.path.abspath(output_csv)}")
+    target_csv = output_csv
+
+    try:
+        df.to_csv(target_csv, index=False)
+        print(f"\n[+] Seluruh data benchmark berhasil disimpan ke: {os.path.abspath(target_csv)}")
+    except PermissionError:
+        # Jika file sedang dibuka oleh Microsoft Excel
+        target_csv = os.path.join(os.path.dirname(os.path.abspath(output_csv)), "benchmark_results_latest.csv")
+        print(f"\n[!] Perhatian: Berkas '{output_csv}' sedang dibuka oleh aplikasi lain (seperti Microsoft Excel).")
+        print(f"[*] Data benchmark dialihkan dan disimpan ke: {os.path.abspath(target_csv)}")
+        df.to_csv(target_csv, index=False)
 
     # Visualisasi
     plots_dir = os.path.join("results", "plots")
@@ -313,16 +364,16 @@ def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_re
 
     print("\n[*] Menghasilkan grafik standar publikasi 300 DPI...")
     plot_scenario_a(
-        csv_path=output_csv,
+        csv_path=target_csv,
         output_path=os.path.join(plots_dir, "skenario_a_resolusi.png")
     )
     plot_scenario_b(
-        csv_path=output_csv,
+        csv_path=target_csv,
         f_fraction=0.90,
         output_path=os.path.join(plots_dir, "skenario_b_amdahl.png")
     )
     plot_scenario_c(
-        csv_path=output_csv,
+        csv_path=target_csv,
         output_path=os.path.join(plots_dir, "skenario_c_kompleksitas.png")
     )
 

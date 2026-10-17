@@ -250,6 +250,16 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
         label="Batas Maksimum Ideal ($S = P = 4$)"
     )
 
+    # Garis acuan titik impas serial S = 1.0
+    ax.axhline(
+        y=1.0,
+        color="#d62728",
+        linestyle="--",
+        linewidth=1.3,
+        alpha=0.75,
+        label="Titik Impas Serial ($S = 1.0$)"
+    )
+
     ax.set_xticks(x_indices)
     ax.set_xticklabels(x_labels, fontweight="bold")
     ax.set_xlabel("Resolusi Matriks Citra Masukan (Piksel)", labelpad=10)
