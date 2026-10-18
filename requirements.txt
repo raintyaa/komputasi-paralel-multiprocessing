@@ -4,3 +4,7 @@ opencv-python>=4.9.0
 psutil>=5.9.0
 matplotlib>=3.8.0
 streamlit>=1.35.0
+
+# Dependensi aplikasi web (backend FastAPI + gateway Uvicorn)
+fastapi>=0.115.0
+uvicorn>=0.30.0

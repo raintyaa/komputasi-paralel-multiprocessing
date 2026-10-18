@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Parallel Vision Workbench - dashboard komputasi paralel pengolahan citra digital multiprocessing (FMIPA UNTAN)." />
+  <title>Parallel Vision Workbench - FMIPA UNTAN</title>
+
+  <!-- ============================================================ -->
+  <!-- PALET DIKUNCI 100%: Canvas #F8FAFC · Surface #FFFFFF ·        -->
+  <!-- Primary #1E40AF · Accent #D97706 · Border #DBEAFE             -->
+  <!-- ============================================================ -->
+
+  <!-- Konfigurasi tema dipdeclarasikan satu kali agar dapat dipakai
+       ulang oleh jalur fallback lokal (mode offline laboratorium). -->
+  <script>
+    window.TW_THEME = {
+      theme: {
+        extend: {
+          colors: {
+            canvas: '#F8FAFC',
+            surface: '#FFFFFF',
+            'surface-subtle': '#E9EEF6',
+            primary: {
+              DEFAULT: '#1E40AF',
+              hover: '#1E3A8A',
+              light: '#EFF6FF',
+            },
+            accent: {
+              DEFAULT: '#D97706',
+              hover: '#B45309',
+              bg: '#FFFBEB',
+              border: '#FDE68A',
+            },
+            border: '#DBEAFE',
+            'border-strong': '#CBD5E1',
+            'text-main': '#0F172A',
+            'text-secondary': '#475569',
+            'text-muted': '#64748B',
+            success: {
+              DEFAULT: '#059669',
+              bg: '#ECFDF5',
+              border: '#A7F3D0',
+            },
+            warning: {
+              DEFAULT: '#D97706',
+              bg: '#FFFBEB',
+              border: '#FDE68A',
+            },
+            danger: {
+              DEFAULT: '#DC2626',
+              bg: '#FEF2F2',
+              border: '#FECACA',
+            },
+          },
+          borderRadius: {
+            'card': '20px',
+          },
+          boxShadow: {
+            'bento': '0 10px 30px -4px rgba(15, 23, 42, 0.04), 0 2px 8px -2px rgba(15, 23, 42, 0.02)',
+            'bento-hover': '0 20px 35px -5px rgba(15, 23, 42, 0.06), 0 4px 12px -2px rgba(15, 23, 42, 0.03)',
+            'pill': '0 2px 6px rgba(15, 23, 42, 0.06)',
+            'nav': '0 4px 20px -2px rgba(15, 23, 42, 0.05)',
+          },
+          fontFamily: {
+            sans: ['-apple-system', 'BlinkMacSystemFont', '"Segoe UI"', 'Roboto', 'sans-serif'],
+            mono: ['"JetBrains Mono"', '"Fira Code"', 'Consolas', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+
+  <!-- Tailwind CSS Play CDN dengan Fallback Offline Otomatis -->
+  <script>
+    function applyTailwindTheme() {
+      if (typeof window.tailwind !== 'undefined') {
+        window.tailwind.config = window.TW_THEME;
+      }
+    }
+  </script>
+  <script src="https://cdn.tailwindcss.com" onload="applyTailwindTheme()" onerror="loadOfflineTailwind()"></script>
+  <script>
+    function loadOfflineTailwind() {
+      if (typeof window.tailwind === 'undefined') {
+        var twLocal = document.createElement('script');
+        twLocal.src = '/static/assets/vendor/tailwind-play.js';
+        twLocal.onload = applyTailwindTheme;
+        document.head.appendChild(twLocal);
+      }
+    }
+    if (typeof window.tailwind !== 'undefined') {
+      applyTailwindTheme();
+    } else {
+      setTimeout(function () {
+        if (typeof window.tailwind === 'undefined') {
+          loadOfflineTailwind();
+        }
+      }, 500);
+    }
+  </script>
+
+  <link rel="stylesheet" href="/static/css/tokens.css" />
+  <link rel="stylesheet" href="/static/css/style.css" />
+  <link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2' fill='%231E40AF'/%3E%3C/svg%3E"
+  />
+</head>
+<body class="min-h-screen bg-canvas font-sans text-text-main antialiased">
+
+  <!-- ================= DEKORASI LATAR (halus, Milkinside white UI) ================= -->
+  <div aria-hidden="true" class="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+    <div class="absolute -left-32 -top-32 h-96 w-96 rounded-full bg-primary/5 blur-3xl"></div>
+    <div class="absolute -right-40 top-1/4 h-[28rem] w-[28rem] rounded-full bg-accent/5 blur-3xl"></div>
+    <div class="absolute bottom-0 left-1/3 h-80 w-80 rounded-full bg-primary/5 blur-3xl"></div>
+  </div>
+
+  <div class="app-shell">
+
+    <!-- ================================================================ -->
+    <!-- RAIL KIRI: navigasi modul + telemetri sistem                     -->
+    <!-- <1024px rail menyusut menjadi strip horizontal sticky di atas.    -->
+    <!-- ================================================================ -->
+    <aside class="app-rail" aria-label="Navigasi modul dan telemetri sistem">
+      <div class="rail-head">
+        <div class="icon-tile icon-tile--brand rail-mark"><span data-icon="zap"></span></div>
+        <div class="rail-head-text">
+          <p class="rail-title">Parallel Vision <span class="rail-version">v2.4</span></p>
+          <p class="rail-sub">Lab Komputasi Paralel &middot; FMIPA UNTAN</p>
+        </div>
+      </div>
+
+      <nav class="rail-nav" role="tablist" aria-orientation="vertical" aria-label="Modul dashboard">
+        <button class="tab-btn is-active" id="tab-btn-live" role="tab" aria-selected="true" aria-controls="tab-live" tabindex="0">
+          <span class="tab-btn-icon"><span data-icon="zap"></span></span>
+          <span class="tab-btn-text">Uji Interaktif (Live)</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-benchmark" role="tab" aria-selected="false" aria-controls="tab-benchmark" tabindex="-1">
+          <span class="tab-btn-icon"><span data-icon="table"></span></span>
+          <span class="tab-btn-text">Orkestrator Benchmark</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-analysis" role="tab" aria-selected="false" aria-controls="tab-analysis" tabindex="-1">
+          <span class="tab-btn-icon"><span data-icon="activity"></span></span>
+          <span class="tab-btn-text">Analisis &amp; Batas Amdahl</span>
+        </button>
+        <button class="tab-btn" id="tab-btn-arch" role="tab" aria-selected="false" aria-controls="tab-arch" tabindex="-1">
+          <span class="tab-btn-icon"><span data-icon="cpu"></span></span>
+          <span class="tab-btn-text">Arsitektur Sistem &amp; FAQ</span>
+        </button>
+      </nav>
+
+      <div class="rail-foot">
+        <p class="rail-section-label">Telemetri Sistem</p>
+        <dl class="rail-stats">
+          <div class="rail-stat">
+            <dt><span data-icon="cpu"></span> Prosesor</dt>
+            <dd id="chip-cpu" title="memuat...">memuat...</dd>
+          </div>
+          <div class="rail-stat">
+            <dt><span data-icon="sliders"></span> Utas Eksekusi</dt>
+            <dd id="chip-cores" title="memuat...">memuat...</dd>
+          </div>
+          <div class="rail-stat">
+            <dt><span data-icon="ram"></span> Memori</dt>
+            <dd id="chip-ram" title="memuat...">memuat...</dd>
+          </div>
+          <div class="rail-stat">
+            <dt><span data-icon="folder"></span> Dataset</dt>
+            <dd id="chip-dataset" title="memuat...">memuat...</dd>
+          </div>
+        </dl>
+        <div class="rail-status" id="rail-status" role="status" aria-live="polite" data-state="ready">
+          <span class="live-pulse" aria-hidden="true"></span>
+          <span id="run-status-text">Menghubungi backend&hellip;</span>
+        </div>
+      </div>
+    </aside>
+
+    <main class="app-main" id="main-content">
+
+    <!-- ================================================================ -->
+    <!-- TAB 1: UJI INTERAKTIF (LIVE)                                     -->
+    <!-- ================================================================ -->
+    <section class="tab-panel is-active" id="tab-live" role="tabpanel" aria-labelledby="tab-btn-live">
+      <header class="panel-head">
+        <h2 class="panel-title">Uji Interaktif (Live)</h2>
+        <p class="prose-sub">
+          Eksekusi satu citra secara serial dan paralel, lalu bandingkan hasilnya
+          piksel per piksel untuk membuktikan keidentikan bit.
+        </p>
+      </header>
+      <div class="grid gap-6 xl:grid-cols-[minmax(300px,360px)_minmax(0,1fr)]">
+        <!-- panel kontrol -->
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble"><span data-icon="sliders"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Konfigurasi Parameter Pengujian</h3>
+                <p class="card-subtitle">Pilih sumber citra, filter spasial, dan alokasi worker proses</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Panel Kontrol</span>
+          </div>
+          <div class="card-body space-y-5">
+            <fieldset class="m-0 border-0 p-0">
+              <legend class="form-label">Pilih Sumber Citra</legend>
+              <div class="segmented">
+                <label><input type="radio" name="live-source" value="dataset" checked /> Dataset 30 Citra Nyata</label>
+                <label><input type="radio" name="live-source" value="synthetic" /> Preset Sintetis</label>
+                <label><input type="radio" name="live-source" value="upload" /> Unggah Mandiri</label>
+              </div>
+            </fieldset>
+
+            <div id="live-row-dataset" class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="form-label" for="live-dat-res">Tingkat Resolusi</label>
+                <select class="select-input" id="live-dat-res">
+                  <option value="512">512 px</option>
+                  <option value="1024" selected>1024 px</option>
+                  <option value="2048">2048 px</option>
+                  <option value="4096">4096 px</option>
+                </select>
+              </div>
+              <div>
+                <label class="form-label" for="live-dat-image">Sampel Citra</label>
+                <select class="select-input" id="live-dat-image"><option value="">memuat...</option></select>
+              </div>
+            </div>
+
+            <div id="live-row-synthetic" hidden>
+              <label class="form-label" for="live-syn-res">Resolusi Sintetis</label>
+              <select class="select-input" id="live-syn-res">
+                <option value="512">512 px</option>
+                <option value="1024" selected>1024 px</option>
+                <option value="2048">2048 px</option>
+                <option value="4096">4096 px</option>
+              </select>
+            </div>
+
+            <div id="live-row-upload" hidden>
+              <label class="form-label" for="live-upload">Unggah Berkas Citra (PNG/JPG)</label>
+              <input class="text-input" type="file" id="live-upload" accept="image/png,image/jpeg" />
+              <p class="caption-small mt-1.5" id="live-upload-name">Belum ada berkas dipilih.</p>
+            </div>
+
+            <div>
+              <label class="form-label" for="live-filter">Operasi Filter Citra</label>
+              <select class="select-input" id="live-filter"></select>
+              <p class="caption-small mt-1.5" id="live-filter-caption"></p>
+            </div>
+
+            <div class="slider-row">
+              <label class="form-label" for="live-p">
+                Alokasi Jumlah Worker Proses (P):
+                <span class="slider-value" id="live-p-value">4</span>
+              </label>
+              <input class="range-input" type="range" id="live-p" min="0" max="4" step="1" value="2"
+                aria-valuetext="4" list="p-ticks" />
+              <datalist id="p-ticks">
+                <option value="1"></option><option value="2"></option><option value="4"></option>
+                <option value="8"></option><option value="12"></option>
+              </datalist>
+              <div class="flex justify-between text-[11px] text-text-muted" aria-hidden="true">
+                <span>1</span><span>2</span><span>4</span><span>8</span><span>12</span>
+              </div>
+              <p class="caption-small" id="live-warm-note"></p>
+            </div>
+
+            <div class="rounded-card border border-border bg-surface-subtle/60 p-3 shadow-bento">
+              <label class="check-item">
+                <input type="checkbox" id="live-warm-pool" checked />
+                <span><b class="font-semibold text-text-main">Persistent Pre-Warmed Pool</b> (rekomendasi Windows)</span>
+              </label>
+              <p class="caption-small mt-1">
+                Menghindari penalti cold-spawn prosesor baru di Windows (multiprocessing
+                berbasis metode spawn, bukan fork).
+              </p>
+            </div>
+
+            <button class="btn btn-primary" id="live-run" type="button">
+              <span data-icon="play"></span><span class="btn-label">Jalankan Komputasi (Serial vs Paralel)</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- viewer output -->
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble card-icon-bubble--accent"><span data-icon="image"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Viewport Citra &amp; Status Bit-Identik</h3>
+                <p class="card-subtitle">Matriks hasil, metrik kinerja, dan bukti keidentikan bit</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Telemetri Keluaran</span>
+          </div>
+
+          <div class="card-body space-y-4">
+            <div class="metadata-strip" id="live-meta-strip" hidden></div>
+
+            <div class="grid grid-cols-2 gap-3 xl:grid-cols-4" id="live-metrics" hidden>
+              <div class="metric-card">
+                <div class="metric-label">Waktu Serial (Ts)</div>
+                <div class="metric-value" id="live-m-tserial">0.0000s</div>
+                <div class="metric-sub">Single-Core Baseline</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Waktu Paralel (Tp)</div>
+                <div class="metric-value" id="live-m-tparallel">0.0000s</div>
+                <div class="metric-sub" id="live-m-parallel-sub">P = 4 Worker Proses</div>
+              </div>
+              <div class="metric-card metric-card-success">
+                <div class="metric-label">Speedup (S)</div>
+                <div class="metric-value" id="live-m-speedup">0.00x</div>
+                <div class="metric-sub">Percepatan Komputasi</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Efisiensi (E)</div>
+                <div class="metric-value" id="live-m-efficiency">0.0%</div>
+                <div class="metric-sub">Util CPU <span class="mono-sm" id="live-m-cpu">-</span></div>
+              </div>
+            </div>
+
+            <div class="badge-pill badge-banner" id="live-badge" role="status"></div>
+
+            <div class="sub-tabstrip" role="tablist" aria-label="Mode tampilan hasil">
+              <button class="sub-tab-btn is-active" id="live-subtab-a" role="tab" aria-selected="true" tabindex="0"
+                data-group="live-view" aria-controls="live-pane-a">Citra Asli vs Paralel</button>
+              <button class="sub-tab-btn" id="live-subtab-b" role="tab" aria-selected="false" tabindex="-1"
+                data-group="live-view" aria-controls="live-pane-b">Perbandingan Berdampingan</button>
+              <button class="sub-tab-btn" id="live-subtab-c" role="tab" aria-selected="false" tabindex="-1"
+                data-group="live-view" aria-controls="live-pane-c">Matriks Selisih Piksel</button>
+            </div>
+            <div class="sub-tab-panel is-active" id="live-pane-a" role="tabpanel" aria-labelledby="live-subtab-a" tabindex="0">
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div id="live-img-input" class="image-placeholder"><p class="placeholder-note">Citra masukan belum diproses.</p></div>
+                  <p class="image-caption" id="live-caption-input">Citra Masukan Asli</p>
+                </div>
+                <div>
+                  <div id="live-img-parallel-a" class="image-placeholder"><p class="placeholder-note">Hasil paralel akan muncul di sini.</p></div>
+                  <p class="image-caption" id="live-caption-parallel-a">Hasil Paralel</p>
+                </div>
+              </div>
+            </div>
+            <div class="sub-tab-panel" id="live-pane-b" role="tabpanel" aria-labelledby="live-subtab-b" tabindex="0">
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div id="live-img-serial-b" class="image-placeholder"></div>
+                  <p class="image-caption" id="live-caption-serial-b">Hasil Serial</p>
+                </div>
+                <div>
+                  <div id="live-img-parallel-b" class="image-placeholder"></div>
+                  <p class="image-caption" id="live-caption-parallel-b">Hasil Paralel</p>
+                </div>
+              </div>
+            </div>
+            <div class="sub-tab-panel" id="live-pane-c" role="tabpanel" aria-labelledby="live-subtab-c" tabindex="0">
+              <div id="live-img-diff" class="image-placeholder"></div>
+              <p class="image-caption" id="live-caption-diff">Matriks Selisih Absolut</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- TAB 2: ORKESTRATOR BENCHMARK                                     -->
+    <!-- ================================================================ -->
+    <section class="tab-panel" id="tab-benchmark" role="tabpanel" aria-labelledby="tab-btn-benchmark" hidden>
+      <header class="panel-head">
+        <h2 class="panel-title">Orkestrator Benchmark</h2>
+        <p class="prose-sub">
+          Platform pengujian eksperimen mandiri komputasi paralel. Menguji performa secara
+          empiris dengan pilihan dataset sintetis atau 30 citra fotografi nyata multiresolusi.
+        </p>
+      </header>
+      <div class="grid gap-6 xl:grid-cols-[minmax(320px,380px)_minmax(0,1fr)]">
+        <!-- konfigurasi -->
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble"><span data-icon="sliders"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Parameter Pengujian Otomatis</h3>
+                <p class="card-subtitle">Basis data, mode, dan skenario perlakuan</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Orkestrator</span>
+          </div>
+          <div class="card-body space-y-5">
+            <fieldset class="m-0 border-0 p-0">
+              <legend class="form-label">Pilih Basis Data Pengujian</legend>
+              <div class="segmented segmented--stack">
+                <label><input type="radio" name="bench-basis" value="dataset" checked /> Dataset 30 Citra Nyata Multiresolusi</label>
+                <label><input type="radio" name="bench-basis" value="synthetic" /> Dataset Sintetis Standar</label>
+              </div>
+            </fieldset>
+
+            <fieldset class="m-0 border-0 p-0">
+              <legend class="form-label">Mode Pengujian</legend>
+              <div class="segmented segmented--stack">
+                <label><input type="radio" name="bench-mode" value="quick" checked /> Quick Verification (1 sampel per resolusi)</label>
+                <label><input type="radio" name="bench-mode" value="full" /> Full Scientific Benchmark (30 sampel per resolusi)</label>
+              </div>
+            </fieldset>
+
+            <fieldset class="m-0 border-0 p-0">
+              <legend class="form-label">Skenario Pengujian</legend>
+              <div class="check-row">
+                <label class="check-item"><input type="checkbox" id="bench-scen-A" checked /> <span><b class="font-semibold text-text-main">Skenario A</b> &ndash; Variasi Resolusi 512&ndash;4096 px @ P=4</span></label>
+                <label class="check-item"><input type="checkbox" id="bench-scen-B" checked /> <span><b class="font-semibold text-text-main">Skenario B</b> &ndash; Variasi Worker P=1,2,4,8 pada 2048px</span></label>
+                <label class="check-item"><input type="checkbox" id="bench-scen-C" checked /> <span><b class="font-semibold text-text-main">Skenario C</b> &ndash; Kompleksitas 3 Filter pada 2048px @ P=4</span></label>
+              </div>
+            </fieldset>
+
+            <p class="helper-note" id="bench-target-note">memuat status dataset...</p>
+
+            <div class="btn-stack">
+              <button class="btn btn-primary" id="bench-run" type="button">
+                <span data-icon="play"></span><span class="btn-label">Jalankan Eksperimen Pengujian</span>
+              </button>
+              <button class="btn btn-danger" id="bench-cancel" type="button" hidden>
+                <span data-icon="square"></span><span class="btn-label">Batalkan Eksperimen</span>
+              </button>
+            </div>
+            <p class="caption-small">
+              Pembatalan bersifat kooperatif: perlakuan yang sedang berjalan diselesaikan lebih
+              dulu, lalu seluruh baris yang sudah terukur tetap disimpan ke CSV.
+            </p>
+          </div>
+        </div>
+
+        <!-- data empiris -->
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble card-icon-bubble--accent"><span data-icon="table"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Data Empiris &amp; Riwayat Pengujian</h3>
+                <p class="card-subtitle">Logger streaming, riwayat baris, dan ekspor CSV</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Pencatat Eksekusi</span>
+          </div>
+          <div class="card-body space-y-4">
+            <div>
+              <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <div class="progress-fill" id="bench-progress-fill"></div>
+              </div>
+              <p class="bench-status mt-2" id="bench-progress-text">Siap menjalankan eksperimen.</p>
+            </div>
+
+            <div class="logger-scroll" id="bench-logger-scroll" tabindex="0" aria-label="Logger eksekusi benchmark">
+              <table class="data-table" id="bench-logger">
+                <thead><tr>
+                  <th scope="col">timestamp</th><th scope="col">scen</th><th scope="col">filter</th>
+                  <th scope="col">res</th><th scope="col">P</th><th scope="col">Ts</th><th scope="col">Tp</th>
+                  <th scope="col">Speedup</th><th scope="col">Eff%</th><th scope="col">CPU%</th><th scope="col">identik</th>
+                </tr></thead>
+                <tbody id="bench-logger-body"></tbody>
+              </table>
+            </div>
+
+            <div class="grid gap-3 sm:grid-cols-3">
+              <button class="btn btn-secondary" id="bench-dl-raw" type="button" disabled>
+                <span data-icon="download"></span><span class="btn-label">Data Mentah</span>
+              </button>
+              <button class="btn btn-secondary" id="bench-dl-summary" type="button" disabled>
+                <span data-icon="download"></span><span class="btn-label">Ringkasan</span>
+              </button>
+              <button class="btn btn-secondary" id="bench-chart-refresh" type="button" disabled>
+                <span data-icon="trending-up"></span><span class="btn-label">Segarkan Grafik</span>
+              </button>
+            </div>
+
+            <p class="caption-small" id="bench-summary-label"></p>
+            <div class="logger-scroll max-h-[280px]">
+              <table class="data-table" id="bench-rows">
+                <thead><tr>
+                  <th scope="col">timestamp</th><th scope="col">scen</th><th scope="col">filter</th>
+                  <th scope="col">res</th><th scope="col">P</th><th scope="col">Ts</th><th scope="col">Tp</th>
+                  <th scope="col">Speedup</th><th scope="col">Eff%</th><th scope="col">CPU%</th><th scope="col">identik</th>
+                </tr></thead>
+                <tbody></tbody>
+              </table>
+            </div>
+
+            <details id="bench-summary-details" hidden>
+              <summary class="form-label cursor-pointer">
+                Lihat Ringkasan Statistik Pengujian (Agregasi Mean &amp; Std)
+                <span class="mono-sm" id="bench-summary-count"></span>
+              </summary>
+              <div class="logger-scroll mt-2 max-h-[240px]">
+                <table class="data-table" id="bench-summary-rows">
+                  <thead><tr>
+                    <th scope="col">scen</th><th scope="col">filter</th><th scope="col">res</th><th scope="col">P</th><th scope="col">n</th>
+                    <th scope="col">Ts Mean</th><th scope="col">Tp Mean</th><th scope="col">S Mean</th>
+                    <th scope="col">S Std</th><th scope="col">E Mean</th><th scope="col">CPU Mean</th>
+                  </tr></thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </details>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- TAB 3: ANALISIS & BATAS AMDAHL                                   -->
+    <!-- ================================================================ -->
+    <section class="tab-panel" id="tab-analysis" role="tabpanel" aria-labelledby="tab-btn-analysis" hidden>
+      <header class="panel-head">
+        <h2 class="panel-title">Analisis &amp; Batas Amdahl</h2>
+        <p class="prose-sub">
+          Visualisasi analitis saintifik yang direaktif dari data pengujian terbaru,
+          dilengkapi simulator teoretis Hukum Amdahl.
+        </p>
+      </header>
+      <div class="grid gap-6 xl:grid-cols-2">
+        <!-- simulator Amdahl -->
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble"><span data-icon="activity"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Simulator Kurva Hukum Amdahl</h3>
+                <p class="card-subtitle">Batas teoretis P &rarr; &infin; terhadap fraksi paralel f</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Batas Teoretis</span>
+          </div>
+          <div class="card-body space-y-4">
+            <p class="caption-small formula-card">
+              Rumus: <b class="text-text-main">S(P) = 1 / ((1 &minus; f) + f / P)</b>
+              &nbsp;|&nbsp; Batas: <b class="text-text-main">S<sub>maks</sub> = 1 / (1 &minus; f)</b>
+            </p>
+
+            <div class="slider-row">
+              <label class="form-label" for="amdahl-f">Fraksi Paralel Algoritma (f): <span class="slider-value" id="amdahl-f-label">0.92</span></label>
+              <input class="range-input" type="range" id="amdahl-f" min="0.50" max="0.999" step="0.01" value="0.92" />
+            </div>
+            <div class="slider-row">
+              <label class="form-label" for="amdahl-p">Rentang Maksimum Prosesor (P): <span class="slider-value" id="amdahl-p-label">16</span></label>
+              <input class="range-input" type="range" id="amdahl-p" min="4" max="64" step="4" value="16" />
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+              <div class="metric-card">
+                <div class="metric-label">Asimtot Speedup Maksimal</div>
+                <div class="metric-value" id="amdahl-asym">-</div>
+                <div class="metric-sub">Batas Teoretis P &rarr; &infin;</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Overhead Serial (1 &minus; f)</div>
+                <div class="metric-value" id="amdahl-serial">-</div>
+                <div class="metric-sub">Porsi tak dapat diparalelkan</div>
+              </div>
+            </div>
+
+            <div class="chart-wrap min-h-[340px]"><canvas id="amdahl-chart"></canvas></div>
+            <p class="caption-small">
+              Titik-titik empiris (jika tersedia) diambil dari hasil Skenario B pada CSV
+              benchmark terbaru.
+            </p>
+          </div>
+        </div>
+
+        <!-- plot dinamis -->
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble card-icon-bubble--accent"><span data-icon="trending-up"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Visualisasi Hasil Pengujian Dinamis</h3>
+                <p class="card-subtitle">Plot empiris dari berkas hasil pengujian terbaru</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Visualisasi Empiris</span>
+          </div>
+          <div class="card-body space-y-4">
+            <div>
+              <label class="form-label" for="plot-select">Pilih Grafik Analisis Dinamis</label>
+              <select class="select-input" id="plot-select">
+                <option value="A">Skenario A: Pengaruh Resolusi Citra (512&ndash;4096 px)</option>
+                <option value="B">Skenario B: Skalabilitas Worker &amp; Saturasi Core (P=1..8)</option>
+                <option value="C">Skenario C: Efisiensi Berdasarkan Kompleksitas Algoritma</option>
+              </select>
+            </div>
+
+            <p class="plot-empty-note" id="plot-empty" hidden></p>
+
+            <div id="plot-wrap-a" class="space-y-4">
+              <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-time"></canvas></div>
+              <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-speedup"></canvas></div>
+            </div>
+            <div id="plot-wrap-b" hidden>
+              <div class="chart-wrap min-h-[340px]"><canvas id="chart-b"></canvas></div>
+            </div>
+            <div id="plot-wrap-c" hidden>
+              <div class="grid gap-3 sm:grid-cols-2">
+                <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-speedup"></canvas></div>
+                <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-eff"></canvas></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================================================================ -->
+    <!-- TAB 4: ARSITEKTUR SISTEM & FAQ                                   -->
+    <!-- ================================================================ -->
+    <section class="tab-panel" id="tab-arch" role="tabpanel" aria-labelledby="tab-btn-arch" hidden>
+      <header class="panel-head">
+        <h2 class="panel-title">Arsitektur Sistem &amp; FAQ</h2>
+        <p class="prose-sub">
+          Landasan arsitektural komputasi paralel: topologi prosesor heterogen Intel Raptor
+          Lake, dekomposisi spasial baris horizontal, dan mekanisme boundary halo (k=1).
+        </p>
+      </header>
+      <div class="grid gap-6 xl:grid-cols-2">
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble"><span data-icon="cpu"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Topologi Prosesor Heterogen</h3>
+                <p class="card-subtitle">P-Core, E-Core, dan saturasi utas eksekusi</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Arsitektur Heterogen</span>
+          </div>
+          <div class="card-body space-y-4">
+            <p class="text-sm text-text-secondary">
+              Laptop pengujian menggunakan prosesor generasi ke-13
+              (<b class="font-semibold text-text-main">Raptor Lake</b>) dengan arsitektur hibrida:
+            </p>
+            <ol class="prose-list">
+              <li><b id="arch-pcores" class="font-semibold text-text-main">4 Performance-Cores</b> &ndash; hingga 4.6 GHz,
+                  Hyper-Threading (8 logical threads), cache L3 besar untuk komputasi berat.</li>
+              <li><b id="arch-ecores" class="font-semibold text-text-main">4 Efficient-Cores</b> &ndash; hingga 3.4 GHz,
+                  tanpa Hyper-Threading (4 logical threads), untuk efisiensi daya latar belakang.</li>
+              <li><b class="font-semibold text-text-main">Total Thread Eksekusi</b> &ndash;
+                  <span class="mono-sm" id="arch-threads">12</span> utas logis,
+                  <span id="arch-ram">RAM</span>.</li>
+            </ol>
+
+            <div class="chart-wrap min-h-[260px]"><canvas id="arch-cpu-chart"></canvas></div>
+            <p class="caption-small">Utilisasi thread CPU saat ini &ndash; P-Core biru, E-Core ungu.</p>
+
+            <blockquote class="prose-quote">
+              <b class="font-semibold text-text-main">Mengapa speedup pada P=8 relatif saturasi?</b>
+              Pada P=1, 2, 4, OS mengalokasikan beban kerja pada core performa tinggi (P-Cores).
+              Pada P=8 dan P=12, sistem mulai mengeksekusi worker di E-Cores dan hyper-threads,
+              di mana frekuensi clock lebih rendah (3.4 GHz vs 4.6 GHz) dan terjadi perebutan
+              shared L3 cache. Hal ini membuktikan Hukum Amdahl dan overhead sinkronisasi IPC.
+            </blockquote>
+          </div>
+        </div>
+
+        <div class="academic-card">
+          <div class="card-header-integrated">
+            <div class="card-header-left">
+              <div class="card-icon-bubble card-icon-bubble--accent"><span data-icon="layers"></span></div>
+              <div class="card-header-text">
+                <h3 class="card-title">Dekomposisi Baris &amp; Boundary Halo</h3>
+                <p class="card-subtitle">Partisi baris, trimming batas, dan rekonstruksi</p>
+              </div>
+            </div>
+            <span class="badge-capsule">Halo k=1</span>
+          </div>
+          <div class="card-body space-y-4">
+            <p class="text-sm text-text-secondary">
+              Dalam operasi konvolusi spasial seperti <b class="font-semibold text-text-main">Gaussian Blur (3&times;3)</b>
+              dan <b class="font-semibold text-text-main">Sobel (3&times;3)</b>, nilai piksel pada baris batas
+              memerlukan informasi piksel tetangga dari blok di atas atau di bawahnya:
+            </p>
+<pre class="halo-diagram">[ Worker 0 ] -&gt; Baris 0 s/d (H/P - 1) + 1 Baris Halo Bawah (k=1)
+================================================= [Boundary Seam]
+[ Worker 1 ] -&gt; 1 Baris Halo Atas + Baris H/P s/d (2H/P-1) + 1 Halo Bawah
+================================================= [Boundary Seam]
+[ Worker P ] -&gt; 1 Baris Halo Atas + Baris ... s/d H-1</pre>
+
+            <p class="text-sm font-semibold text-text-main">Tahapan Eksekusi Bebas Artefak (Artifact-Free)</p>
+            <ol class="prose-list">
+              <li><b class="font-semibold text-text-main">Pemekaran partisi (Halo Insertion):</b>
+                  setiap worker menerima sub-matriks diperluas setinggi (H/P) + 2k baris.</li>
+              <li><b class="font-semibold text-text-main">Komputasi konvolusi lokal:</b>
+                  worker menerapkan filter tanpa komunikasi antar proses.</li>
+              <li><b class="font-semibold text-text-main">Pemangkasan batas (Trimming):</b>
+                  baris k atas &amp; bawah dipangkas dari hasil lokal.</li>
+              <li><b class="font-semibold text-text-main">Rekonstruksi zero-copy:</b>
+                  hasil utuh digabungkan via numpy.vstack() sekuensial.</li>
+            </ol>
+            <p class="caption-small">
+              Verifikasi membuktikan &Delta;<sub>max</sub> = 0.000000 (100% bit-identik dengan eksekusi serial).
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="academic-card mt-6">
+        <div class="card-header-integrated">
+          <div class="card-header-left">
+            <div class="card-icon-bubble"><span data-icon="help-circle"></span></div>
+            <div class="card-header-text">
+              <h3 class="card-title">Panduan Pembelaan Akademik (Evaluasi Dosen)</h3>
+              <p class="card-subtitle">Jawaban siap pakai untuk sesi evaluasi</p>
+            </div>
+          </div>
+          <span class="badge-capsule">Tanya Jawab</span>
+        </div>
+        <div class="card-body space-y-3">
+          <details class="faq-item">
+            <summary><span class="summary-arrow" aria-hidden="true">&rsaquo;</span>
+              Mengapa efisiensi pada citra kecil (512&times;512) rendah atau speedup &lt; 1x?
+            </summary>
+            <div class="faq-answer">
+              Pada citra 512&times;512 (beban komputasi sekitar 0.006 detik), waktu untuk serialisasi
+              memori (pickling), partisi matriks, dan pengiriman buffer array melalui IPC
+              (Inter-Process Communication) jauh lebih besar daripada waktu komputasi aritmatika
+              filter itu sendiri. Ini membuktikan prinsip bahwa komputasi paralel hanya memberikan
+              percepatan signifikan jika rasio komputasi terhadap komunikasi
+              (T<sub>comp</sub> / T<sub>comm</sub>) bernilai tinggi.
+            </div>
+          </details>
+          <details class="faq-item">
+            <summary><span class="summary-arrow" aria-hidden="true">&rsaquo;</span>
+              Mengapa pengujian menggunakan arsitektur pre-warmed pool?
+            </summary>
+            <div class="faq-answer">
+              Pada Windows, multiprocessing menggunakan metode <b class="font-semibold text-text-main">spawn</b>,
+              bukan <b class="font-semibold text-text-main">fork</b> seperti pada Linux. Pembuatan proses
+              Python baru (cold spawn) membutuhkan inisialisasi runtime 1.5&ndash;2.5 detik. Jika waktu
+              spawn dimasukkan dalam blok pengukuran, ia mengaburkan pengukuran murni algoritma
+              paralel. Dengan pre-warmed pool, kita mengukur <i>pure algorithmic speedup</i> secara adil.
+            </div>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    </main>
+  </div>
+
+  <!-- ================= SCRIPTS ================= -->
+  <script src="/static/js/icons.js" defer></script>
+  <script src="/static/assets/vendor/chart.umd.min.js" defer></script>
+  <script src="/static/js/app.js" defer></script>
+  <script src="/static/js/live.js" defer></script>
+  <script src="/static/js/benchmark.js" defer></script>
+  <script src="/static/js/charts.js" defer></script>
+</body>
+</html>

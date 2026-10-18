@@ -1,0 +1,91 @@
+/* ==========================================================================
+   tokens.css - Design Tokens Parallel Vision Workbench v2.4
+   Sumber rujukan: DESIGN.md (Executive Academic Scientific Dashboard)
+   Berkas ini hanya berisi variabel :root; tidak ada aturan komponen.
+   ========================================================================== */
+
+:root {
+  /* --- Warna Inti (Palet "Analytics Dashboard": blue data + amber highlight,
+         base selaras putih: Card #FFFFFF, Canvas #F8FAFC) --- */
+  --color-primary: #1E40AF;          /* Royal Blue 800 - aksi & navigasi aktif */
+  --color-primary-hover: #1E3A8A;    /* Royal Blue 900 */
+  --color-primary-light: #EFF6FF;    /* Tint biru utk tab aktif & slider */
+  --color-accent: #D97706;           /* Amber - highlight data & tag kartu */
+  --color-accent-hover: #B45309;
+  --color-accent-text: #B45309;      /* Teks amber di atas #FFFBEB -> 4.8:1 (AA) */
+  --color-accent-bg: #FFFBEB;
+  --color-accent-border: #FDE68A;
+  --color-canvas: #F8FAFC;           /* Slate 50 - latar aplikasi */
+  --color-surface: #FFFFFF;          /* Permukaan kartu */
+  --color-surface-subtle: #E9EEF6;   /* Header kartu / zebra (muted biru-tone) */
+
+  /* --- Garis Tepi --- */
+  --color-border: #DBEAFE;           /* Border biru-tone terang (kartu menyatu) */
+  --color-border-strong: #CBD5E1;    /* Slate 300 (input / hover) */
+  --color-border-subtle: #F1F5F9;
+  --color-border-focus: #1E40AF;
+
+  /* --- Teks --- */
+  --color-text-main: #0F172A;        /* Slate 900 - judul & angka metrik */
+  --color-text-secondary: #475569;   /* Slate 600 - kontras 6.2:1 */
+  --color-text-muted: #64748B;       /* Slate 500 */
+  --color-text-light: #94A3B8;       /* Slate 400 (grafis dekoratif saja) */
+
+  /* --- Semantik --- */
+  --color-success: #059669;
+  --color-success-text: #065F46;     /* Teks hijau di atas #ECFDF5 -> AA */
+  --color-success-bg: #ECFDF5;
+  --color-success-border: #A7F3D0;
+  --color-warning: #D97706;
+  --color-warning-bg: #FFFBEB;
+  --color-warning-border: #FDE68A;
+  --color-danger: #DC2626;
+  --color-danger-bg: #FEF2F2;
+  --color-danger-border: #FECACA;
+
+  /* --- Chart palette (konsisten dgn vis Streamlit lama) --- */
+  --color-chart-blue: #3B82F6;       /* Secondary data series */
+  --color-chart-green: #059669;
+  --color-chart-violet: #7C3AED;
+  --color-chart-amber: #D97706;
+  --color-chart-slate: #64748B;
+  --color-chart-gray: #94A3B8;
+
+  /* --- Tipografi --- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", Menlo, Monaco, Consolas, monospace;
+
+  /* --- Skala Tipografi --- */
+  --text-display: 1.25rem;      /* 20px - brand */
+  --text-h1: 1.5rem;            /* 24px - judul laman */
+  --text-h2: 1.125rem;          /* 18px - judul seksi */
+  --text-h3: 1rem;              /* 16px - header kartu (DESIGN.md 3.2) */
+  --text-body: 0.875rem;        /* 14px - paragraf */
+  --text-small: 0.75rem;        /* 12px - metadata */
+  --text-metric: 2rem;          /* 32px - nilai metrik (DESIGN.md 3.2) */
+
+  /* --- Radius --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* --- Elevation --- */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+  --shadow-rail: 0 4px 20px -2px rgba(15, 23, 42, 0.05);
+
+  /* --- Layout --- */
+  --navbar-height: 68px;         /* legasi: bar komando lama (Tab 2 usang) */
+  --rail-width: 240px;           /* Rail navigasi kiri (DESIGN.md 4.2) */
+  --content-max-width: 1440px;
+  --content-padding-x: 1.75rem;
+
+  /* --- Waktu transisi --- */
+  --motion-fast: 120ms;
+  --motion-base: 200ms;
+}

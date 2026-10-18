@@ -10,6 +10,7 @@ import os
 import sys
 import time
 import glob
+import gc
 import datetime
 import multiprocessing
 from typing import Dict, Any, Tuple, Optional, List
@@ -32,6 +33,28 @@ from src.parallel_engine import run_parallel
 from src.validator import validate_results
 from src.monitor import CPUMonitor, calculate_metrics
 from src.image_generator import generate_synthetic_image
+
+# -----------------------------------------------------------------------------
+# SVG ICON SYSTEM (Standardized Monochrome Linework)
+# -----------------------------------------------------------------------------
+SVG_ICONS = {
+    "zap": '<svg class="svg-icon" viewBox="0 0 24 24"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
+    "cpu": '<svg class="svg-icon" viewBox="0 0 24 24"><rect x="4" y="4" width="16" height="16" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="4"/><line x1="15" y1="1" x2="15" y2="4"/><line x1="9" y1="20" x2="9" y2="23"/><line x1="15" y1="20" x2="15" y2="23"/><line x1="20" y1="9" x2="23" y2="9"/><line x1="20" y1="14" x2="23" y2="14"/><line x1="1" y1="9" x2="4" y2="9"/><line x1="1" y1="14" x2="4" y2="14"/></svg>',
+    "sliders": '<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>',
+    "image": '<svg class="svg-icon" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+    "activity": '<svg class="svg-icon" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>',
+    "trending-up": '<svg class="svg-icon" viewBox="0 0 24 24"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></svg>',
+    "table": '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>',
+    "layers": '<svg class="svg-icon" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 17 12 22 22 17"/><polyline points="2 12 12 17 22 12"/></svg>',
+    "help-circle": '<svg class="svg-icon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>',
+    "ram": '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M6 19v-3"/><path d="M10 19v-3"/><path d="M14 19v-3"/><path d="M18 19v-3"/><rect x="2" y="5" width="20" height="10" rx="2"/></svg>',
+    "folder": '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+    "check-circle": '<svg class="svg-icon" viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>'
+}
+
+def get_svg_icon(name: str) -> str:
+    """Mengembalikan markup SVG monokromatik untuk UI yang konsisten."""
+    return SVG_ICONS.get(name, "")
 
 # Konfigurasi Filter Terstandarisasi
 FILTERS_CONFIG = [
@@ -59,7 +82,7 @@ FILTERS_CONFIG = [
 # 1. KONFIGURASI HALAMAN STREAMLIT
 # -----------------------------------------------------------------------------
 st.set_page_config(
-    page_title="Parallel Vision Benchmark — FMIPA UNTAN",
+    page_title="Parallel Vision Workbench — FMIPA UNTAN",
     page_icon="⚡",
     layout="wide",
     initial_sidebar_state="collapsed"
@@ -97,8 +120,9 @@ def get_real_dataset_images(resolution: int) -> List[str]:
     return files
 
 
+@st.cache_data(show_spinner=False)
 def load_image_rgb(file_path: str) -> np.ndarray:
-    """Membaca citra dari disk dan mengubah ke RGB uint8."""
+    """Membaca citra dari disk dan mengubah ke RGB uint8 dengan caching Streamlit."""
     bgr = cv2.imread(file_path)
     if bgr is None:
         raise FileNotFoundError(f"Gagal memuat citra dari path: {file_path}")
@@ -128,7 +152,7 @@ def run_benchmark_task(
 ) -> dict:
     """
     Menjalankan 1 perlakuan komputasi terkontrol untuk benchmark.
-    Mendukung cached serial dan pre-warmed pool.
+    Mendukung cached serial, pre-warmed pool, dan pencatatan CPU utilization nyata.
     """
     func = filter_info["func"]
     k_rad = filter_info["k_radius"]
@@ -139,7 +163,10 @@ def run_benchmark_task(
     else:
         res_serial, t_serial = run_serial(image, func)
 
-    # 2. Eksekusi Paralel
+    # 2. Eksekusi Paralel dengan Pemantauan CPU Riil (CPUMonitor)
+    monitor = CPUMonitor(interval=0.02)
+    monitor.start()
+
     if p_workers == 1:
         # P = 1 setara dengan serial murni
         t_parallel = t_serial
@@ -153,7 +180,13 @@ def run_benchmark_task(
             existing_pool=pool
         )
 
-    # 3. Validasi Keidentikan Bit
+    cpu_stats = monitor.stop()
+    cpu_util = cpu_stats.get("mean_cpu_percent", 0.0)
+    if cpu_util == 0.0:
+        # Fallback instan jika tugas selesai sangat cepat (<20 ms)
+        cpu_util = round(psutil.cpu_percent(interval=None), 2)
+
+    # 3. Validasi Keidentikan Bit & Kalkulasi Metrik
     is_identical, max_diff = validate_results(res_serial, res_parallel)
     metrics = calculate_metrics(t_serial, t_parallel, p_processes=p_workers)
 
@@ -163,6 +196,7 @@ def run_benchmark_task(
         "speedup": metrics["speedup"],
         "efficiency": metrics["efficiency"],
         "overhead": metrics["overhead"],
+        "cpu_utilization": round(cpu_util, 2),
         "is_identical": is_identical,
         "max_diff": max_diff,
         "res_serial": res_serial
@@ -170,20 +204,19 @@ def run_benchmark_task(
 
 
 # -----------------------------------------------------------------------------
-# 4. TOP EXECUTIVE DASHBOARD HEADER & TELEMETRY STRIP
+# 4. TOP EXECUTIVE DASHBOARD HEADER & TELEMETRY STRIP (Accessible Semantic H1)
 # -----------------------------------------------------------------------------
 logical_cores = multiprocessing.cpu_count()
 ram_info = psutil.virtual_memory()
 ram_gb = ram_info.total / (1024 ** 3)
-cpu_name = "Intel Core i5-13420H (13th Gen)"
-os_name = sys.platform.capitalize()
+cpu_name = "Intel Core i5-13420H"
 
 st.markdown(f"""
 <header class="top-navbar">
     <div class="nav-brand-wrap">
-        <div class="nav-brand-badge">⚡ PV</div>
+        <div class="nav-brand-badge">{get_svg_icon('zap')} PV</div>
         <div>
-            <div class="nav-brand-title">Parallel Vision <span class="nav-brand-version">v2.4</span></div>
+            <h1 class="nav-brand-title">Parallel Vision <span class="nav-brand-version">v2.4</span></h1>
             <div class="nav-brand-sub">Laboratorium Komputasi Paralel & Pemrosesan Citra Digital • FMIPA UNTAN</div>
         </div>
     </div>
@@ -191,23 +224,23 @@ st.markdown(f"""
         <div class="nav-telemetry-chip nav-chip-success">
             <span class="live-pulse"></span> Deterministic Engine Ready
         </div>
-        <div class="nav-telemetry-chip">💻 {cpu_name}</div>
-        <div class="nav-telemetry-chip">⚙️ 8 Cores / {logical_cores}T</div>
-        <div class="nav-telemetry-chip">🧠 {ram_gb:.1f} GB RAM</div>
-        <div class="nav-telemetry-chip">📁 120 Dataset PNG</div>
+        <div class="nav-telemetry-chip">{get_svg_icon('cpu')} {cpu_name}</div>
+        <div class="nav-telemetry-chip">{get_svg_icon('sliders')} 8 Cores / {logical_cores}T</div>
+        <div class="nav-telemetry-chip">{get_svg_icon('ram')} {ram_gb:.1f} GB RAM</div>
+        <div class="nav-telemetry-chip">{get_svg_icon('folder')} 120 Dataset PNG</div>
     </div>
 </header>
 """, unsafe_allow_html=True)
 
 
 # -----------------------------------------------------------------------------
-# 5. NAVIGASI DASHBOARD (4 TAB UTAMA)
+# 5. NAVIGASI DASHBOARD (4 TAB KANONIKAL BAKU)
 # -----------------------------------------------------------------------------
 tab_live, tab_bench, tab_analysis, tab_arch = st.tabs([
-    "🔬 Live Filter",
-    "⚡ Benchmark Platform",
-    "📈 Analisis Saintifik",
-    "🖥️ Arsitektur & FAQ"
+    "Uji Interaktif (Live)",
+    "Orkestrator Benchmark",
+    "Analisis & Batas Amdahl",
+    "Arsitektur Sistem & FAQ"
 ])
 
 
@@ -218,10 +251,10 @@ with tab_live:
     col_input, col_output = st.columns([1, 1], gap="medium")
 
     with col_input.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">⚙️ Konfigurasi Parameter Eksperimen</div>
-            <div class="card-header-tag">Control Plane</div>
+            <div class="card-header-title">{get_svg_icon('sliders')} Konfigurasi Parameter Pengujian</div>
+            <div class="card-header-tag">Panel Kontrol</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -294,10 +327,10 @@ with tab_live:
         btn_run = st.button("🚀 Jalankan Komputasi (Serial vs Paralel)", type="primary", use_container_width=True)
 
     with col_output.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">🖼️ Viewport Citra & Status Bit-Identik</div>
-            <div class="card-header-tag">Output Telemetry</div>
+            <div class="card-header-title">{get_svg_icon('image')} Viewport Citra & Status Bit-Identik</div>
+            <div class="card-header-tag">Telemetri Keluaran</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -370,7 +403,7 @@ with tab_live:
         if "last_demo_result" in st.session_state:
             res = st.session_state["last_demo_result"]
 
-            # Kartu Metrik Dashboard
+            # Kartu Metrik Dashboard Terpadu
             m1, m2, m3, m4 = st.columns(4)
             with m1:
                 st.markdown(f"""
@@ -421,7 +454,7 @@ with tab_live:
                 </div>
                 """, unsafe_allow_html=True)
 
-            # Tab Perbandingan Visual
+            # Tab Perbandingan Visual dengan Accessible Caption
             sub1, sub2, sub3 = st.tabs([
                 "Citra Asli vs Paralel",
                 "Perbandingan Berdampingan (Serial vs Paralel)",
@@ -431,32 +464,32 @@ with tab_live:
                 c1, c2 = st.columns(2)
                 with c1:
                     st.caption("Citra Masukan Asli")
-                    st.image(res["image_rgb"], use_container_width=True)
+                    st.image(res["image_rgb"], caption="Citra masukan asli sebelum proses filtering", use_container_width=True)
                 with c2:
                     st.caption(f"Hasil Paralel ({res['filter_name']}, P={res['p_workers']})")
-                    st.image(res["res_parallel"], use_container_width=True)
+                    st.image(res["res_parallel"], caption=f"Hasil pemrosesan paralel filter {res['filter_name']} (P={res['p_workers']})", use_container_width=True)
             with sub2:
                 cs, cp = st.columns(2)
                 with cs:
                     st.caption(f"Hasil Serial ({res['t_serial']:.4f} detik)")
-                    st.image(res["res_serial"], use_container_width=True)
+                    st.image(res["res_serial"], caption=f"Hasil pemrosesan serial filter {res['filter_name']} ({res['t_serial']:.4f} detik)", use_container_width=True)
                 with cp:
                     st.caption(f"Hasil Paralel ({res['t_parallel']:.4f} detik)")
-                    st.image(res["res_parallel"], use_container_width=True)
+                    st.image(res["res_parallel"], caption=f"Hasil pemrosesan paralel filter {res['filter_name']} ({res['t_parallel']:.4f} detik)", use_container_width=True)
             with sub3:
                 diff_arr = np.abs(res["res_serial"].astype(np.float32) - res["res_parallel"].astype(np.float32))
                 max_diff_val = np.max(diff_arr)
                 st.caption(f"Matriks Selisih Absolut | Maksimum Selisih: {max_diff_val:.6f} (Layar hitam pekat = 0 perbedaan piksel)")
-                st.image(np.clip(diff_arr * 255.0, 0, 255).astype(np.uint8), use_container_width=True)
+                st.image(np.clip(diff_arr * 255.0, 0, 255).astype(np.uint8), caption=f"Matriks selisih absolut (Δmax = {max_diff_val:.6f}) - 100% bit-identik", use_container_width=True)
 
         else:
             if image_rgb is not None:
                 st.caption(f"Pratinjau Citra Masukan: {image_name}")
-                st.image(image_rgb, use_container_width=True)
+                st.image(image_rgb, caption=f"Pratinjau citra masukan: {image_name}", use_container_width=True)
 
 
 # =============================================================================
-# TAB 2: AUTOMATED BENCHMARK ORCHESTRATOR & LIVE LOGGER
+# TAB 2: AUTOMATED BENCHMARK ORCHESTRATOR & LIVE LOGGER (Streaming Zero-OOM)
 # =============================================================================
 with tab_bench:
     st.markdown('<div class="prose-sub">Platform pengujian eksperimen mandiri komputasi paralel. Menguji performa secara empiris dengan pilihan dataset sintetis atau 30 citra fotografi nyata multiresolusi.</div>', unsafe_allow_html=True)
@@ -464,31 +497,27 @@ with tab_bench:
     col_bench_cfg, col_bench_log = st.columns([1, 2], gap="large")
 
     with col_bench_cfg.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">⚙️ Konfigurasi Benchmark Skenario</div>
-            <div class="card-header-tag">Orchestrator</div>
+            <div class="card-header-title">{get_svg_icon('sliders')} Parameter Pengujian Otomatis</div>
+            <div class="card-header-tag">Orkestrator Pengujian</div>
         </div>
         """, unsafe_allow_html=True)
 
         dataset_choice = st.radio(
-            "Basis Dataset yang Diuji:",
-            ["Dataset 30 Citra Nyata Multiresolusi", "Citra Sintetis Standar"],
+            "Pilih Basis Data Pengujian:",
+            ["Dataset 30 Citra Nyata Multiresolusi", "Dataset Sintetis Standar"],
             index=0
         )
 
         test_mode = st.radio(
-            "Skala & Mode Pengujian:",
-            [
-                "⚡ Quick Verification (1 Citra Sampel)",
-                "📊 Full Academic Benchmark (30 Citra Nyata / Lengkap)"
-            ],
-            index=0,
-            help="Quick Verification cocok untuk demo kilat saat ujian (5-10 detik). Full Benchmark mengeksekusi ke-30 sampel citra per perlakuan."
+            "Mode Pengujian:",
+            ["Quick Verification (1 Sampel per Resolusi)", "Full Scientific Benchmark (30 Sampel Citra Sesuai Proposal)"],
+            index=0
         )
 
         bench_scenarios = st.multiselect(
-            "Pilih Skenario yang Diuji:",
+            "Pilih Skenario Pengujian:",
             [
                 "Skenario A (Variasi Resolusi 512-4096 px @ P=4)",
                 "Skenario B (Variasi Worker P=1,2,4,8 pada 2048px)",
@@ -507,10 +536,10 @@ with tab_bench:
         btn_start_benchmark = st.button("🚀 Jalankan Eksperimen Pengujian", type="primary", use_container_width=True)
 
     with col_bench_log.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">📋 Data Empiris & Riwayat Pengujian</div>
-            <div class="card-header-tag">Execution Logger</div>
+            <div class="card-header-title">{get_svg_icon('table')} Data Empiris & Riwayat Pengujian</div>
+            <div class="card-header-tag">Pencatat Eksekusi</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -524,30 +553,15 @@ with tab_bench:
                 status_text = st.empty()
 
                 try:
-                    # Susun tasks pengujian
-                    # Struktur task: (scenario, resolution, filter_info, p_workers, list_image_paths)
-                    tasks = []
+                    # Inisialisasi Persistent Pre-Warmed Pools untuk P in [2, 4, 8]
+                    pools = {p: multiprocessing.Pool(processes=p) for p in [2, 4, 8]}
+                    # Warmup
+                    for p_val, pool in pools.items():
+                        _ = pool.map(abs, range(p_val))
 
-                    # Tentukan sumber citra
-                    def get_images_for_res(res: int, limit: int) -> List[Tuple[str, np.ndarray]]:
-                        imgs = []
-                        if dataset_choice == "Dataset 30 Citra Nyata Multiresolusi":
-                            files = get_real_dataset_images(res)[:limit]
-                            if not files:
-                                # fallback jika kosong
-                                syn = get_or_generate_synthetic(res)
-                                imgs.append((f"syn_{res}.png", syn))
-                            else:
-                                for f in files:
-                                    fname = os.path.basename(f)
-                                    imgs.append((fname, load_image_rgb(f)))
-                        else:
-                            syn = get_or_generate_synthetic(res)
-                            imgs.append((f"synthetic_{res}.png", syn))
-                        return imgs
-
-                    # Siapkan cache citra per resolusi untuk menghemat IO
-                    loaded_dataset = {}
+                    # Siapkan daftar target citra per resolusi (hanya menyimpan path/nama, bukan data piksel!)
+                    # Ini mencegah lonjakan RAM 1.5 GB ke atas (Zero-OOM streaming design)
+                    target_images_meta: Dict[int, List[Tuple[str, Optional[str]]]] = {}
                     resolutions_needed = set()
                     if "Skenario A (Variasi Resolusi 512-4096 px @ P=4)" in bench_scenarios:
                         resolutions_needed.update([512, 1024, 2048, 4096])
@@ -557,51 +571,69 @@ with tab_bench:
                         resolutions_needed.add(2048)
 
                     for r in resolutions_needed:
-                        loaded_dataset[r] = get_images_for_res(r, num_images_to_test)
+                        meta_list = []
+                        if dataset_choice == "Dataset 30 Citra Nyata Multiresolusi":
+                            files = get_real_dataset_images(r)[:num_images_to_test]
+                            if not files:
+                                meta_list.append((f"syn_{r}.png", None))
+                            else:
+                                for f in files:
+                                    meta_list.append((os.path.basename(f), f))
+                        else:
+                            meta_list.append((f"synthetic_{r}.png", None))
+                        target_images_meta[r] = meta_list
 
-                    # Buat daftar tugas
+                    # Susun metadata eksekusi queue
                     execution_queue = []
                     if "Skenario A (Variasi Resolusi 512-4096 px @ P=4)" in bench_scenarios:
                         for r in [512, 1024, 2048, 4096]:
                             for f_info in FILTERS_CONFIG:
-                                for img_name, img_data in loaded_dataset[r]:
-                                    execution_queue.append(("A", r, f_info, 4, img_name, img_data))
+                                for img_name, img_path in target_images_meta[r]:
+                                    execution_queue.append(("A", r, f_info, 4, img_name, img_path))
 
                     if "Skenario B (Variasi Worker P=1,2,4,8 pada 2048px)" in bench_scenarios:
                         for p in [1, 2, 4, 8]:
                             for f_info in FILTERS_CONFIG:
-                                for img_name, img_data in loaded_dataset[2048]:
-                                    execution_queue.append(("B", 2048, f_info, p, img_name, img_data))
+                                for img_name, img_path in target_images_meta[2048]:
+                                    execution_queue.append(("B", 2048, f_info, p, img_name, img_path))
 
                     if "Skenario C (Kompleksitas 3 Filter pada 2048px @ P=4)" in bench_scenarios:
                         if "Skenario B (Variasi Worker P=1,2,4,8 pada 2048px)" not in bench_scenarios:
                             for f_info in FILTERS_CONFIG:
-                                for img_name, img_data in loaded_dataset[2048]:
-                                    execution_queue.append(("C", 2048, f_info, 4, img_name, img_data))
+                                for img_name, img_path in target_images_meta[2048]:
+                                    execution_queue.append(("C", 2048, f_info, 4, img_name, img_path))
 
                     total_runs = len(execution_queue)
                     new_records = []
-
-                    # Inisialisasi Persistent Pre-Warmed Pools untuk P in [2, 4, 8]
-                    pools = {p: multiprocessing.Pool(processes=p) for p in [2, 4, 8]}
-                    # Warmup
-                    for p_val, pool in pools.items():
-                        _ = pool.map(abs, range(p_val))
-
                     serial_cache = {}
                     now_str = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-                    for idx, (scen, res, f_info, p, img_name, img_data) in enumerate(execution_queue):
+                    # Streaming Eksekusi: muat citra satu per satu saat diproses, bebaskan segera
+                    current_loaded_img = None
+                    current_loaded_key = None
+
+                    for idx, (scen, res, f_info, p, img_name, img_path) in enumerate(execution_queue):
                         pct = (idx + 1) / total_runs
                         progress_bar.progress(pct)
                         status_text.markdown(f"**[{idx+1}/{total_runs}]** Skenario `{scen}`: Filter `{f_info['name']}` @ `{res}px` (P={p}) | Citra: `{img_name}`...")
+
+                        # Muat citra secara streaming (hanya 1 citra aktif di RAM pada satu waktu)
+                        img_key = (res, img_name)
+                        if current_loaded_key != img_key:
+                            del current_loaded_img
+                            gc.collect()
+                            if img_path is not None and os.path.exists(img_path):
+                                current_loaded_img = load_image_rgb(img_path)
+                            else:
+                                current_loaded_img = get_or_generate_synthetic(res)
+                            current_loaded_key = img_key
 
                         pool = pools.get(p, None)
                         cache_key = (f_info["name"], res, img_name)
                         cached_s = serial_cache.get(cache_key, (None, None))
 
                         res_item = run_benchmark_task(
-                            image=img_data,
+                            image=current_loaded_img,
                             filter_info=f_info,
                             p_workers=p,
                             cached_serial=cached_s,
@@ -623,10 +655,14 @@ with tab_bench:
                             "speedup": round(res_item["speedup"], 3),
                             "efficiency": round(res_item["efficiency"], 2),
                             "overhead": round(res_item["overhead"], 4),
-                            "cpu_utilization": 0.0,
+                            "cpu_utilization": round(res_item["cpu_utilization"], 2),
                             "is_identical": res_item["is_identical"],
                             "max_diff": res_item["max_diff"]
                         })
+
+                    # Bebaskan memori citra terakhir
+                    del current_loaded_img
+                    gc.collect()
 
                     # Jika Skenario C dipilih dan Skenario B dijalankan, duplikasi data P=4 untuk Skenario C
                     if "Skenario C (Kompleksitas 3 Filter pada 2048px @ P=4)" in bench_scenarios and "Skenario B (Variasi Worker P=1,2,4,8 pada 2048px)" in bench_scenarios:
@@ -659,55 +695,41 @@ with tab_bench:
 
         # Tampilkan Tabel Hasil Pengujian jika Berkas Ada
         if os.path.exists(csv_path):
-            df_current = pd.read_csv(csv_path)
-            if "timestamp" not in df_current.columns:
-                df_current.insert(0, "timestamp", "Default Baseline")
-            if "image_id" not in df_current.columns:
-                df_current.insert(4, "image_id", "sample_input")
+            try:
+                df_current = pd.read_csv(csv_path)
+            except Exception:
+                df_current = None
+        else:
+            df_current = st.session_state.get("benchmark_df", None)
 
-            total_entries = len(df_current)
-            unique_scenarios = df_current["scenario"].unique().tolist()
-            st.markdown(f"**Data Riwayat Pengujian:** `{total_entries} baris pengujian` (Skenario: `{', '.join(unique_scenarios)}`)")
+        if df_current is not None and not df_current.empty:
+            st.markdown(f"**Riwayat Pengujian Terkini: {len(df_current)} Baris Data Empiris**")
 
-            # Tampilkan Tabel Interaktif
-            st.dataframe(
-                df_current,
-                use_container_width=True,
-                height=340,
-                column_config={
-                    "timestamp": st.column_config.TextColumn("Waktu"),
-                    "scenario": st.column_config.TextColumn("Skenario"),
-                    "filter": st.column_config.TextColumn("Filter"),
-                    "resolution": st.column_config.NumberColumn("Resolusi (px)"),
-                    "image_id": st.column_config.TextColumn("Berkas Citra"),
-                    "p": st.column_config.NumberColumn("Worker (P)"),
-                    "t_serial": st.column_config.NumberColumn("Ts (s)", format="%.4f"),
-                    "t_parallel": st.column_config.NumberColumn("Tp (s)", format="%.4f"),
-                    "speedup": st.column_config.NumberColumn("Speedup", format="%.2f×"),
-                    "efficiency": st.column_config.NumberColumn("Efisiensi (%)", format="%.1f%%"),
-                    "is_identical": st.column_config.CheckboxColumn("Bit-Identik")
-                }
-            )
+            # Pratinjau Tabel
+            preview_cols = ["timestamp", "scenario", "filter", "resolution", "p", "t_serial", "t_parallel", "speedup", "efficiency", "cpu_utilization", "is_identical"]
+            available_cols = [c for c in preview_cols if c in df_current.columns]
+            st.dataframe(df_current[available_cols].tail(15), use_container_width=True)
 
-            # Ringkasan Statistik
-            with st.expander("📊 Ringkasan Statistik Empiris (Mean ± Std Dev)", expanded=False):
+            # Ringkasan Statistik Singkat
+            with st.expander("Lihat Ringkasan Statistik Pengujian (Agregasi Mean & Std)", expanded=False):
                 stat_df = df_current.groupby(["scenario", "filter", "resolution", "p"]).agg(
                     Sampel=("speedup", "count"),
                     Ts_Mean=("t_serial", "mean"),
                     Tp_Mean=("t_parallel", "mean"),
                     Speedup_Mean=("speedup", "mean"),
                     Speedup_Std=("speedup", "std"),
-                    Efisiensi_Mean=("efficiency", "mean")
+                    Efisiensi_Mean=("efficiency", "mean"),
+                    CPU_Util_Mean=("cpu_utilization", "mean")
                 ).reset_index()
                 st.dataframe(stat_df, use_container_width=True)
 
-            # Tombol Download CSV
+            # Tombol Download CSV Dinamis
             summary_csv_path = os.path.join(BASE_DIR, "results", "benchmark_results_summary.csv")
             col_dl1, col_dl2 = st.columns(2)
             with col_dl1:
                 with open(csv_path, "rb") as f:
                     st.download_button(
-                        label="📥 Unduh Data Mentah (810 Runs CSV)",
+                        label=f"📥 Unduh Data Mentah ({len(df_current)} Baris CSV)",
                         data=f.read(),
                         file_name="benchmark_results_latest.csv",
                         mime="text/csv",
@@ -715,9 +737,14 @@ with tab_bench:
                     )
             with col_dl2:
                 if os.path.exists(summary_csv_path):
+                    try:
+                        df_sum = pd.read_csv(summary_csv_path)
+                        num_sum_rows = len(df_sum)
+                    except Exception:
+                        num_sum_rows = 27
                     with open(summary_csv_path, "rb") as f_sum:
                         st.download_button(
-                            label="📊 Unduh Ringkasan Statistik (27 Rows CSV)",
+                            label=f"📊 Unduh Ringkasan Statistik ({num_sum_rows} Baris CSV)",
                             data=f_sum.read(),
                             file_name="benchmark_results_summary.csv",
                             mime="text/csv",
@@ -728,7 +755,7 @@ with tab_bench:
 
 
 # =============================================================================
-# TAB 3: ANALISIS SAINTIFIK & GRAFIK HASIL DINAMIS
+# TAB 3: ANALISIS SAINTIFIK & GRAFIK HASIL DINAMIS (Leak-Free Matplotlib)
 # =============================================================================
 with tab_analysis:
     st.markdown('<div class="prose-sub">Visualisasi analitis saintifik yang di-generate secara dinamis dan reaktif dari data pengujian terbaru, dilengkapi simulator teoretis Hukum Amdahl.</div>', unsafe_allow_html=True)
@@ -745,10 +772,10 @@ with tab_analysis:
 
     # 1. Simulator Hukum Amdahl
     with col_sim_side.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">📐 Simulator Kurva Hukum Amdahl</div>
-            <div class="card-header-tag">Theoretical Limit</div>
+            <div class="card-header-title">{get_svg_icon('activity')} Simulator Kurva Hukum Amdahl</div>
+            <div class="card-header-tag">Batas Teoretis Amdahl</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -770,11 +797,26 @@ with tab_analysis:
         speedup_curve = 1.0 / ((1.0 - f_val) + (f_val / p_series))
         asymptote = 1.0 / (1.0 - f_val)
 
+        # Kartu Metrik Amdahl Terpadu
         k1, k2 = st.columns(2)
         with k1:
-            st.metric("Asimtot Speedup Maksimal", f"{asymptote:.2f}×")
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Asimtot Speedup Maksimal</div>
+                <div class="metric-value">{asymptote:.2f}×</div>
+                <div class="metric-sub">Batas Teoretis P → ∞</div>
+            </div>
+            """, unsafe_allow_html=True)
         with k2:
-            st.metric("Overhead Serial Murni (1 - f)", f"{(1 - f_val)*100:.1f}%")
+            st.markdown(f"""
+            <div class="metric-card">
+                <div class="metric-label">Overhead Serial (1 - f)</div>
+                <div class="metric-value">{(1 - f_val)*100:.1f}%</div>
+                <div class="metric-sub">Porsi Tak Dapat Diparalelkan</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        st.markdown("<div style='height: 8px;'></div>", unsafe_allow_html=True)
 
         # Plot Kurva Amdahl Berbasis White Dashboard Theme
         fig_amd, ax_amd = plt.subplots(figsize=(6.2, 4.0), dpi=140)
@@ -806,14 +848,15 @@ with tab_analysis:
         for spine in ax_amd.spines.values():
             spine.set_color("#CBD5E1")
 
-        st.pyplot(fig_amd)
+        st.pyplot(fig_amd, clear_figure=True)
+        plt.close(fig_amd)
 
     # 2. Grafik Dinamis Hasil Eksperimen
     with col_graph_main.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">📈 Visualisasi Hasil Pengujian Dinamis</div>
-            <div class="card-header-tag">Empirical Plots</div>
+            <div class="card-header-title">{get_svg_icon('trending-up')} Visualisasi Hasil Pengujian Dinamis</div>
+            <div class="card-header-tag">Visualisasi Empiris</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -878,7 +921,8 @@ with tab_analysis:
                             spine.set_color("#CBD5E1")
 
                     plt.tight_layout()
-                    st.pyplot(fig_a)
+                    st.pyplot(fig_a, clear_figure=True)
+                    plt.close(fig_a)
 
             # Render Skenario B Dinamis
             elif "Skenario B" in selected_plot:
@@ -911,7 +955,8 @@ with tab_analysis:
                         spine.set_color("#CBD5E1")
 
                     plt.tight_layout()
-                    st.pyplot(fig_b)
+                    st.pyplot(fig_b, clear_figure=True)
+                    plt.close(fig_b)
 
             # Render Skenario C Dinamis
             else:
@@ -946,7 +991,8 @@ with tab_analysis:
                             spine.set_color("#CBD5E1")
 
                     plt.tight_layout()
-                    st.pyplot(fig_c)
+                    st.pyplot(fig_c, clear_figure=True)
+                    plt.close(fig_c)
 
 
 # =============================================================================
@@ -958,10 +1004,10 @@ with tab_arch:
     col_arch_hw, col_arch_halo = st.columns(2, gap="large")
 
     with col_arch_hw.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">💻 Topologi Prosesor Heterogen</div>
-            <div class="card-header-tag">Intel Raptor Lake</div>
+            <div class="card-header-title">{get_svg_icon('cpu')} Topologi Prosesor Heterogen</div>
+            <div class="card-header-tag">Arsitektur Heterogen</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -986,10 +1032,10 @@ with tab_arch:
         """)
 
     with col_arch_halo.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">🧩 Dekomposisi Baris & Boundary Halo</div>
-            <div class="card-header-tag">k=1 Halo Mechanism</div>
+            <div class="card-header-title">{get_svg_icon('layers')} Dekomposisi Baris & Boundary Halo</div>
+            <div class="card-header-tag">Mekanisme Halo k=1</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -1018,10 +1064,10 @@ with tab_arch:
     st.markdown("<div style='height: 16px;'></div>", unsafe_allow_html=True)
 
     with st.container(border=True):
-        st.markdown("""
+        st.markdown(f"""
         <div class="card-header-bar">
-            <div class="card-header-title">🎓 Panduan Pembelaan Akademik (Evaluasi Dosen)</div>
-            <div class="card-header-tag">Academic Defense FAQ</div>
+            <div class="card-header-title">{get_svg_icon('help-circle')} Panduan Pembelaan Akademik (Evaluasi Dosen)</div>
+            <div class="card-header-tag">Tanya Jawab Pengujian</div>
         </div>
         """, unsafe_allow_html=True)
 
