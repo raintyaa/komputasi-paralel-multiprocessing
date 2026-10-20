@@ -385,49 +385,134 @@
             <div class="card-header-left">
               <div class="card-icon-bubble"><span data-icon="sliders"></span></div>
               <div class="card-header-text">
-                <h3 class="card-title">Parameter Pengujian Otomatis</h3>
-                <p class="card-subtitle">Basis data, mode, dan skenario perlakuan</p>
+                <h3 class="card-title">Parameter Pengujian Benchmark</h3>
+                <p class="card-subtitle">Pilih metode alur (Bertahap Terpandu vs Sekali Klik Penuh)</p>
               </div>
             </div>
             <span class="badge-capsule">Orkestrator</span>
           </div>
           <div class="card-body space-y-5">
             <fieldset class="m-0 border-0 p-0">
-              <legend class="form-label">Pilih Basis Data Pengujian</legend>
+              <legend class="form-label">Metode Alur Pengujian</legend>
               <div class="segmented segmented--stack">
-                <label><input type="radio" name="bench-basis" value="dataset" checked /> Dataset 30 Citra Nyata Multiresolusi</label>
-                <label><input type="radio" name="bench-basis" value="synthetic" /> Dataset Sintetis Standar</label>
+                <label><input type="radio" name="bench-workflow" value="stepper" checked /> Mode Bertahap / Terpandu (Rekomendasi Laporan)</label>
+                <label><input type="radio" name="bench-workflow" value="batch" /> Mode Otomatis Penuh (Sekali Klik A s.d. C)</label>
               </div>
             </fieldset>
 
-            <fieldset class="m-0 border-0 p-0">
-              <legend class="form-label">Mode Pengujian</legend>
-              <div class="segmented segmented--stack">
-                <label><input type="radio" name="bench-mode" value="quick" checked /> Quick Verification (1 sampel per resolusi)</label>
-                <label><input type="radio" name="bench-mode" value="full" /> Full Scientific Benchmark (30 sampel per resolusi)</label>
+            <div class="grid gap-3 sm:grid-cols-2">
+              <div>
+                <label class="form-label" for="bench-basis-select">Basis Citra Uji</label>
+                <select class="select-input" id="bench-basis-select">
+                  <option value="single_image" selected>Citra Acuan Master (img_01 Center-Crop)</option>
+                  <option value="dataset">Dataset 30 Citra Nyata (Legasi)</option>
+                  <option value="synthetic">Dataset Sintetis Standar</option>
+                </select>
               </div>
-            </fieldset>
-
-            <fieldset class="m-0 border-0 p-0">
-              <legend class="form-label">Skenario Pengujian</legend>
-              <div class="check-row">
-                <label class="check-item"><input type="checkbox" id="bench-scen-A" checked /> <span><b class="font-semibold text-text-main">Skenario A</b> &ndash; Variasi Resolusi 512&ndash;4096 px @ P=4</span></label>
-                <label class="check-item"><input type="checkbox" id="bench-scen-B" checked /> <span><b class="font-semibold text-text-main">Skenario B</b> &ndash; Variasi Worker P=1,2,4,8 pada 2048px</span></label>
-                <label class="check-item"><input type="checkbox" id="bench-scen-C" checked /> <span><b class="font-semibold text-text-main">Skenario C</b> &ndash; Kompleksitas 3 Filter pada 2048px @ P=4</span></label>
+              <div>
+                <label class="form-label" for="bench-reps-select">Jumlah Repetisi Iterasi</label>
+                <select class="select-input" id="bench-reps-select">
+                  <option value="30" selected>30x Iterasi (Standar Penuh Ilmiah)</option>
+                  <option value="3">3x Iterasi (Verifikasi Kilat)</option>
+                  <option value="5">5x Iterasi (Uji Moderat)</option>
+                </select>
               </div>
-            </fieldset>
+            </div>
 
-            <p class="helper-note" id="bench-target-note">memuat status dataset...</p>
+            <div class="flex items-center justify-between rounded-card border border-border bg-surface-subtle/60 p-3">
+              <div>
+                <label class="check-item">
+                  <input type="checkbox" id="bench-thermal-pause" checked />
+                  <span><b class="font-semibold text-text-main">Jeda Istirahat CPU (Cool-down)</b></span>
+                </label>
+                <p class="caption-small mt-0.5 text-text-muted">Jeda 2 detik antar-filter untuk mencegah Thermal Throttling.</p>
+              </div>
+              <span class="badge-pill bg-sky-50 text-sky-800 text-[11px] font-mono font-medium">2.0s jeda</span>
+            </div>
 
-            <div class="btn-stack">
-              <button class="btn btn-primary" id="bench-run" type="button">
-                <span data-icon="play"></span><span class="btn-label">Jalankan Eksperimen Pengujian</span>
-              </button>
-              <button class="btn btn-danger" id="bench-cancel" type="button" hidden>
-                <span data-icon="square"></span><span class="btn-label">Batalkan Eksperimen</span>
+            <!-- Kontainer Mode Bertahap / Terpandu (Stepper) -->
+            <div id="bench-flow-stepper" class="space-y-3">
+              <div class="form-label text-xs uppercase tracking-wider text-text-muted">Tahapan Pengujian Terpandu (Runtut)</div>
+
+              <!-- Step 1: Skenario A -->
+              <div class="stepper-card rounded-card border border-border p-3 bg-surface hover:border-primary/40 transition-all">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold font-mono">1</span>
+                    <div>
+                      <div class="font-semibold text-sm text-text-main">Tahap 1: Skenario A (Pengaruh Resolusi)</div>
+                      <div class="text-[12px] text-text-muted">512, 1024, 2048, 4096 px @ P=4 (90 uji x 4 res = 360 data)</div>
+                    </div>
+                  </div>
+                  <span class="badge-pill text-[11px]" id="step-badge-a">Siap</span>
+                </div>
+                <div class="mt-2.5 flex justify-end">
+                  <button class="btn btn-primary text-xs py-1.5 px-3" id="btn-step-a" type="button">
+                    <span data-icon="play"></span> Jalankan Tahap 1
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 2: Skenario B -->
+              <div class="stepper-card rounded-card border border-border p-3 bg-surface hover:border-primary/40 transition-all opacity-85" id="card-step-b">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-text-muted/15 text-text-muted text-xs font-bold font-mono" id="num-step-b">2</span>
+                    <div>
+                      <div class="font-semibold text-sm text-text-main">Tahap 2: Skenario B (Skalabilitas Worker)</div>
+                      <div class="text-[12px] text-text-muted">P = 1, 2, 4, 8 @ 2048px (90 uji x 4 P = 360 data)</div>
+                    </div>
+                  </div>
+                  <span class="badge-pill text-[11px]" id="step-badge-b">Terkunci (Jalankan Tahap 1)</span>
+                </div>
+                <div class="mt-2.5 flex justify-end">
+                  <button class="btn btn-secondary text-xs py-1.5 px-3" id="btn-step-b" type="button" disabled>
+                    <span data-icon="play"></span> Jalankan Tahap 2
+                  </button>
+                </div>
+              </div>
+
+              <!-- Step 3: Skenario C -->
+              <div class="stepper-card rounded-card border border-border p-3 bg-surface hover:border-primary/40 transition-all opacity-85" id="card-step-c">
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center gap-2.5">
+                    <span class="flex h-6 w-6 items-center justify-center rounded-full bg-text-muted/15 text-text-muted text-xs font-bold font-mono" id="num-step-c">3</span>
+                    <div>
+                      <div class="font-semibold text-sm text-text-main">Tahap 3: Skenario C (Analisis Kompleksitas)</div>
+                      <div class="text-[12px] text-text-muted">Kompilasi korelasi beban filter @ 2048px P=4</div>
+                    </div>
+                  </div>
+                  <span class="badge-pill text-[11px]" id="step-badge-c">Terkunci</span>
+                </div>
+                <div class="mt-2.5 flex justify-end">
+                  <button class="btn btn-secondary text-xs py-1.5 px-3" id="btn-step-c" type="button" disabled>
+                    <span data-icon="play"></span> Kompilasi Final
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Kontainer Mode Otomatis Penuh (Batch) -->
+            <div id="bench-flow-batch" class="space-y-4" hidden>
+              <fieldset class="m-0 border-0 p-0">
+                <legend class="form-label">Skenario Pengujian Serentak</legend>
+                <div class="check-row">
+                  <label class="check-item"><input type="checkbox" id="bench-scen-A" checked /> <span><b class="font-semibold text-text-main">Skenario A</b> &ndash; Variasi Resolusi (512&ndash;4096 px @ P=4)</span></label>
+                  <label class="check-item"><input type="checkbox" id="bench-scen-B" checked /> <span><b class="font-semibold text-text-main">Skenario B</b> &ndash; Variasi Worker P=1,2,4,8 pada 2048px</span></label>
+                  <label class="check-item"><input type="checkbox" id="bench-scen-C" checked /> <span><b class="font-semibold text-text-main">Skenario C</b> &ndash; Kompleksitas 3 Filter pada 2048px @ P=4</span></label>
+                </div>
+              </fieldset>
+
+              <button class="btn btn-primary w-full" id="bench-run" type="button">
+                <span data-icon="play"></span><span class="btn-label">Jalankan Seluruh Skenario (A - C) Sekaligus</span>
               </button>
             </div>
-            <p class="caption-small">
+
+            <button class="btn btn-danger w-full" id="bench-cancel" type="button" hidden>
+              <span data-icon="square"></span><span class="btn-label">Hentikan / Batalkan Pengujian</span>
+            </button>
+
+            <p class="caption-small" id="bench-target-note">
               Pembatalan bersifat kooperatif: perlakuan yang sedang berjalan diselesaikan lebih
               dulu, lalu seluruh baris yang sudah terukur tetap disimpan ke CSV.
             </p>
@@ -458,7 +543,7 @@
               <table class="data-table" id="bench-logger">
                 <thead><tr>
                   <th scope="col">timestamp</th><th scope="col">scen</th><th scope="col">filter</th>
-                  <th scope="col">res</th><th scope="col">P</th><th scope="col">Ts</th><th scope="col">Tp</th>
+                  <th scope="col">res</th><th scope="col">it</th><th scope="col">P</th><th scope="col">Ts</th><th scope="col">Tp</th>
                   <th scope="col">Speedup</th><th scope="col">Eff%</th><th scope="col">CPU%</th><th scope="col">identik</th>
                 </tr></thead>
                 <tbody id="bench-logger-body"></tbody>
@@ -482,7 +567,7 @@
               <table class="data-table" id="bench-rows">
                 <thead><tr>
                   <th scope="col">timestamp</th><th scope="col">scen</th><th scope="col">filter</th>
-                  <th scope="col">res</th><th scope="col">P</th><th scope="col">Ts</th><th scope="col">Tp</th>
+                  <th scope="col">res</th><th scope="col">it</th><th scope="col">P</th><th scope="col">Ts</th><th scope="col">Tp</th>
                   <th scope="col">Speedup</th><th scope="col">Eff%</th><th scope="col">CPU%</th><th scope="col">identik</th>
                 </tr></thead>
                 <tbody></tbody>
