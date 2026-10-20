@@ -41,7 +41,10 @@ from src.filters import (  # noqa: E402
     apply_grayscale,
     apply_sobel,
 )
-from src.image_generator import generate_synthetic_image  # noqa: E402
+from src.image_generator import (  # noqa: E402
+    generate_synthetic_image,
+    prepare_reference_multires_images,
+)
 from src.monitor import CPUMonitor, calculate_metrics  # noqa: E402
 from src.parallel_engine import run_parallel  # noqa: E402
 from src.serial_engine import run_serial  # noqa: E402
@@ -171,6 +174,20 @@ def get_or_generate_synthetic(resolution: int) -> np.ndarray:
     with _synthetic_lock:
         _synthetic_cache[resolution] = img
     return img
+
+
+def get_reference_image(resolution: int) -> Path:
+    """Path berkas citra acuan tunggal master center-crop (siapkan otomatis bila belum ada)."""
+    ref_path = INPUT_DIR / f"reference_{resolution}.png"
+    if not ref_path.exists():
+        master_path = DATASET_DIR / "4096" / "img_01.png"
+        if master_path.exists():
+            prepare_reference_multires_images(
+                master_path=str(master_path), output_dir=str(INPUT_DIR)
+            )
+        if not ref_path.exists():
+            return get_synthetic_image_path(resolution)
+    return ref_path
 
 
 def resolve_live_image(source: Dict[str, Any]) -> Tuple[np.ndarray, str]:
@@ -400,7 +417,7 @@ SCENARIO_LABELS: Dict[str, str] = {
     "C": "Skenario C - Kompleksitas 3 Filter pada 2048px @ P=4",
 }
 BENCH_CSV_COLUMNS = [
-    "timestamp", "scenario", "filter", "resolution", "image_id", "p",
+    "timestamp", "scenario", "filter", "resolution", "image_id", "iteration", "p",
     "t_serial", "t_parallel", "speedup", "efficiency", "overhead",
     "cpu_utilization", "is_identical", "max_diff",
 ]
@@ -453,13 +470,17 @@ def _load_target_image(res: int, path: Optional[Path]) -> np.ndarray:
 
 
 def _build_execution_queue(
-    basis: str, quick: bool, scenarios: List[str]
-) -> List[Tuple[str, int, Dict[str, Any], int, str, Optional[Path]]]:
+    basis: str, quick: bool, scenarios: List[str], repetitions: Optional[int] = None
+) -> List[Tuple[str, int, Dict[str, Any], int, str, Optional[Path], int]]:
     """
     Susun antrean eksekusi metadata (BEBAS data piksel - Zero-OOM design).
-    Item: (scenario, resolution, filter_cfg, p, image_name, image_path)
+    Item: (scenario, resolution, filter_cfg, p, image_name, image_path, iteration)
     """
-    quick = quick or basis == "synthetic"
+    if repetitions is not None and repetitions > 0:
+        reps = repetitions
+    else:
+        reps = 3 if quick else 30
+
     resolutions_needed = set()
     if "A" in scenarios:
         resolutions_needed.update(RESOLUTIONS)
@@ -469,7 +490,9 @@ def _build_execution_queue(
     target_meta: Dict[int, List[Tuple[str, Optional[Path]]]] = {}
     for r in resolutions_needed:
         meta_list: List[Tuple[str, Optional[Path]]] = []
-        if basis == "dataset":
+        if basis == "single_image":
+            meta_list.append((f"ref_img_01_{r}px", get_reference_image(r)))
+        elif basis == "dataset":
             files = get_dataset_images(r)[: (1 if quick else 30)]
             if not files:
                 meta_list.append((f"syn_{r}.png", None))
@@ -479,34 +502,52 @@ def _build_execution_queue(
             meta_list.append((f"synthetic_{r}.png", None))
         target_meta[r] = meta_list
 
-    queue: List[Tuple[str, int, Dict[str, Any], int, str, Optional[Path]]] = []
+    queue: List[Tuple[str, int, Dict[str, Any], int, str, Optional[Path], int]] = []
     if "A" in scenarios:
         for r in RESOLUTIONS:
             for f_cfg in FILTERS_CONFIG:
                 for name, path in target_meta.get(r, []):
-                    queue.append(("A", r, f_cfg, 4, name, path))
+                    if basis in ("single_image", "synthetic"):
+                        for it in range(1, reps + 1):
+                            queue.append(("A", r, f_cfg, 4, name, path, it))
+                    else:
+                        queue.append(("A", r, f_cfg, 4, name, path, 1))
     if "B" in scenarios:
         for p in [1, 2, 4, 8]:
             for f_cfg in FILTERS_CONFIG:
                 for name, path in target_meta.get(2048, []):
-                    queue.append(("B", 2048, f_cfg, p, name, path))
+                    if basis in ("single_image", "synthetic"):
+                        for it in range(1, reps + 1):
+                            queue.append(("B", 2048, f_cfg, p, name, path, it))
+                    else:
+                        queue.append(("B", 2048, f_cfg, p, name, path, 1))
     # C hanya bila B tidak dipilih (saat B ikut dijalankan, C didefinisikan
     # sebagai duplikasi baris B dengan P=4 di akhir - sesuai app.py).
     if "C" in scenarios and "B" not in scenarios:
         for f_cfg in FILTERS_CONFIG:
             for name, path in target_meta.get(2048, []):
-                queue.append(("C", 2048, f_cfg, 4, name, path))
+                if basis in ("single_image", "synthetic"):
+                    for it in range(1, reps + 1):
+                        queue.append(("C", 2048, f_cfg, 4, name, path, it))
+                else:
+                    queue.append(("C", 2048, f_cfg, 4, name, path, 1))
     return queue
 
 
 def stream_benchmark_events(
-    basis: str, mode: str, scenarios: List[str]
+    basis: str = "single_image",
+    mode: str = "full",
+    scenarios: Optional[List[str]] = None,
+    repetitions: Optional[int] = None,
+    quick: Optional[bool] = None,
+    append_results: bool = False,
+    cool_down_seconds: float = 0.0,
 ) -> Iterator[Dict[str, Any]]:
     """
     Generator streaming eksekusi benchmark - menghasilkan event dict:
 
     - {"type": "start", "total": n, "basis":..., "mode":..., "scenarios":[...]}
-    - {"type": "progress", "index": i, "total": n, "record": {...baris CSV...}}
+    - {"type": "progress", "index": i, "total": n, "iteration": k, "record": {...baris CSV...}}
     - {"type": "cancelled", "rows": n, "completed": k, "total": n, "csv_path": "..."}
     - {"type": "complete", "rows": n, "csv_path": "...", "summary_rows": n}
     - {"type": "error", "message": "..."}
@@ -530,7 +571,10 @@ def stream_benchmark_events(
     current_key: Optional[Tuple[int, str]] = None
 
     try:
-        quick = mode == "quick"
+        if quick is None:
+            quick = mode == "quick"
+        if scenarios is None:
+            scenarios = ["A", "B", "C"]
         scenarios = [s for s in scenarios if s in SCENARIO_LABELS]
         if not scenarios:
             raise ValueError("Minimal satu skenario harus dipilih")
@@ -539,10 +583,11 @@ def stream_benchmark_events(
             "type": "start",
             "basis": basis,
             "quick": quick,
+            "repetitions": repetitions,
             "scenarios": scenarios,
         }
 
-        queue = _build_execution_queue(basis, quick, scenarios)
+        queue = _build_execution_queue(basis, quick, scenarios, repetitions=repetitions)
         yield {"type": "queued", "total": len(queue)}
 
         if not queue:
@@ -557,7 +602,7 @@ def stream_benchmark_events(
 
         total = len(queue)
         cancelled = False
-        for idx, (scen, res, f_cfg, p, img_name, img_path) in enumerate(queue):
+        for idx, (scen, res, f_cfg, p, img_name, img_path, it) in enumerate(queue):
             # Cek cancel di AWAL iterasi: treatment yang sudah jalan tak dipotong
             if cancel_requested():
                 cancelled = True
@@ -611,6 +656,7 @@ def stream_benchmark_events(
                 "filter": f_cfg["name"],
                 "resolution": res,
                 "image_id": img_name,
+                "iteration": it,
                 "p": p,
                 "t_serial": round(t_serial, 6),
                 "t_parallel": round(t_parallel, 6),
@@ -628,6 +674,7 @@ def stream_benchmark_events(
                 "type": "progress",
                 "index": idx + 1,
                 "total": total,
+                "iteration": it,
                 "scenario": scen,
                 "filter": f_cfg["name"],
                 "resolution": res,
@@ -636,19 +683,40 @@ def stream_benchmark_events(
                 "record": record,
             }
 
+            # Jeda pendinginan termal (Cool-down) antar-filter atau saat berganti blok
+            if cool_down_seconds > 0 and (idx + 1) < total:
+                next_scen, next_res, next_cfg, next_p, _, _, next_it = queue[idx + 1]
+                if next_cfg["name"] != f_cfg["name"] or next_scen != scen or next_res != res:
+                    yield {
+                        "type": "cooldown",
+                        "seconds": cool_down_seconds,
+                        "message": f"Pendinginan termal CPU ({cool_down_seconds}s) sebelum {next_cfg['name']}...",
+                    }
+                    time.sleep(cool_down_seconds)
+
         if cancelled:
             # Persist rekaman yang benar-benar terukur (tanpa fabrikasi baris C)
             RESULTS_DIR.mkdir(parents=True, exist_ok=True)
             df_new = pd.DataFrame(new_records, columns=BENCH_CSV_COLUMNS)
             if not df_new.empty:
-                df_new.to_csv(BENCH_CSV_PATH, index=False)
+                if append_results and BENCH_CSV_PATH.exists():
+                    try:
+                        df_old = pd.read_csv(BENCH_CSV_PATH)
+                        df_final = pd.concat([df_old, df_new], ignore_index=True).drop_duplicates(
+                            subset=["scenario", "filter", "resolution", "p", "iteration"], keep="last"
+                        )
+                    except Exception:
+                        df_final = df_new
+                else:
+                    df_final = df_new
+                df_final.to_csv(BENCH_CSV_PATH, index=False)
             logger.info(
                 "Benchmark dibatalkan pada %d/%d eksekusi (%d baris tersimpan)",
-                len(new_records), total, len(df_new),
+                len(new_records), total, len(new_records),
             )
             yield {
                 "type": "cancelled",
-                "rows": len(df_new),
+                "rows": len(new_records),
                 "completed": len(new_records),
                 "total": total,
                 "csv_path": str(BENCH_CSV_PATH.relative_to(ROOT_DIR)),
@@ -665,12 +733,26 @@ def stream_benchmark_events(
 
         RESULTS_DIR.mkdir(parents=True, exist_ok=True)
         df_new = pd.DataFrame(new_records)
-        df_new.to_csv(BENCH_CSV_PATH, index=False)
-        df_summary = aggregate_summary(df_new)
+
+        # Penggabungan bertahap (Incremental Append) untuk mode bertahap
+        if append_results and BENCH_CSV_PATH.exists():
+            try:
+                df_old = pd.read_csv(BENCH_CSV_PATH)
+                # Hilangkan baris lama yang skenarionya sama persis agar tidak terduplikasi
+                scenarios_in_new = set(df_new["scenario"].unique())
+                df_filtered = df_old[~df_old["scenario"].isin(scenarios_in_new)]
+                df_final = pd.concat([df_filtered, df_new], ignore_index=True)
+            except Exception:
+                df_final = df_new
+        else:
+            df_final = df_new
+
+        df_final.to_csv(BENCH_CSV_PATH, index=False)
+        df_summary = aggregate_summary(df_final)
 
         yield {
             "type": "complete",
-            "rows": len(df_new),
+            "rows": len(df_final),
             "csv_path": str(BENCH_CSV_PATH.relative_to(ROOT_DIR)),
             "summary_rows": int(len(df_summary)),
         }
@@ -703,17 +785,22 @@ def load_results_csv() -> Optional[pd.DataFrame]:
 
 def aggregate_summary(df: pd.DataFrame) -> pd.DataFrame:
     """Agregasi statistik per (scenario, filter, resolution, p)."""
-    return (
+    grouped = (
         df.groupby(["scenario", "filter", "resolution", "p"])
         .agg(
             Sampel=("speedup", "count"),
             Ts_Mean=("t_serial", "mean"),
+            Ts_Std=("t_serial", "std"),
             Tp_Mean=("t_parallel", "mean"),
+            Tp_Std=("t_parallel", "std"),
             Speedup_Mean=("speedup", "mean"),
             Speedup_Std=("speedup", "std"),
             Efisiensi_Mean=("efficiency", "mean"),
             CPU_Util_Mean=("cpu_utilization", "mean"),
         )
         .reset_index()
-        .round(4)
     )
+    grouped["Ts_Std"] = grouped["Ts_Std"].fillna(0.0)
+    grouped["Tp_Std"] = grouped["Tp_Std"].fillna(0.0)
+    grouped["Speedup_Std"] = grouped["Speedup_Std"].fillna(0.0)
+    return grouped.round(4)

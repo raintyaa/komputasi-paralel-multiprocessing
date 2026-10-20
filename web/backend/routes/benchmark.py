@@ -35,12 +35,21 @@ class BenchmarkRunRequest(BaseModel):
     """Bodi request eksekusi benchmark."""
 
     basis: str = Field(
-        "dataset",
-        description="Basis data uji: dataset (30 citra nyata) | synthetic",
+        "single_image",
+        description="Basis data uji: single_image (1 citra master acuan) | dataset (30 citra nyata) | synthetic",
     )
-    mode: str = Field("quick", description="Mode: quick (1 sampel) | full (30 sampel)")
+    mode: str = Field("full", description="Mode: quick (3 repetisi) | full (30 repetisi)")
     scenarios: List[str] = Field(
         ["A", "B", "C"], description="Skenario yang dipilih: subset [A, B, C]"
+    )
+    repetitions: Optional[int] = Field(
+        None, description="Jumlah repetisi pengujian per perlakuan (default: 30x full, 3x quick)"
+    )
+    append_results: bool = Field(
+        False, description="Simpan akumulatif bertahap tanpa menimpa skenario lain"
+    )
+    cool_down_seconds: float = Field(
+        0.0, description="Jeda istirahat pendinginan CPU antar-filter (detik)"
     )
 
 
@@ -65,7 +74,7 @@ def _results_payload() -> Optional[Dict[str, Any]]:
     if df is None or df.empty:
         return None
     preview_cols = [
-        "timestamp", "scenario", "filter", "resolution", "image_id", "p",
+        "timestamp", "scenario", "filter", "resolution", "image_id", "iteration", "p",
         "t_serial", "t_parallel", "speedup", "efficiency", "overhead",
         "cpu_utilization", "is_identical", "max_diff",
     ]
@@ -126,16 +135,24 @@ def _sse_generator(payload: BenchmarkRunRequest):
         "basis": payload.basis,
         "mode": payload.mode,
         "scenarios": payload.scenarios,
+        "repetitions": payload.repetitions,
+        "append_results": payload.append_results,
+        "cool_down_seconds": payload.cool_down_seconds,
     }
     try:
-        if payload.basis not in ("dataset", "synthetic"):
-            raise ValueError("basis harus 'dataset' atau 'synthetic'")
+        if payload.basis not in ("single_image", "dataset", "synthetic"):
+            raise ValueError("basis harus 'single_image', 'dataset', atau 'synthetic'")
         if payload.mode not in ("quick", "full"):
             raise ValueError("mode harus 'quick' atau 'full'")
 
         logger.info("Benchmark SSE dimulai: %s", run_info)
         for event in bridge.stream_benchmark_events(
-            basis=payload.basis, mode=payload.mode, scenarios=payload.scenarios
+            basis=payload.basis,
+            mode=payload.mode,
+            scenarios=payload.scenarios,
+            repetitions=payload.repetitions,
+            append_results=payload.append_results,
+            cool_down_seconds=payload.cool_down_seconds,
         ):
             if event["type"] in ("error", "cancelled"):
                 yield _sse_event(event)
@@ -156,12 +173,13 @@ async def get_benchmark_config() -> Dict[str, Any]:
     return {
         "ok": True,
         "bases": [
-            {"id": "dataset", "label": "Dataset 30 Citra Nyata Multiresolusi"},
+            {"id": "single_image", "label": "Citra Acuan Master (img_01.png Center-Crop 30x Repetisi)"},
+            {"id": "dataset", "label": "Dataset 30 Citra Nyata (Mode Legasi)"},
             {"id": "synthetic", "label": "Dataset Sintetis Standar"},
         ],
         "modes": [
-            {"id": "quick", "label": "Quick Verification (1 Sampel per Resolusi)"},
-            {"id": "full", "label": "Full Scientific Benchmark (30 Sampel per Resolusi)"},
+            {"id": "full", "label": "Full Scientific Benchmark (30x Repetisi)"},
+            {"id": "quick", "label": "Quick Verification (3x Repetisi)"},
         ],
         "scenarios": [
             {"id": "A", "label": bridge.SCENARIO_LABELS["A"]},
