@@ -1,11 +1,13 @@
 """
 Module: image_generator.py
-Deskripsi: Pembuat dataset citra masukan RGB sintetis standar untuk penelitian
+Deskripsi: Pembuat dataset citra masukan RGB sintetis standar dan generator
+           citra acuan tunggal multiresolusi berbasis center-crop untuk penelitian
            komputasi paralel (pengujian filter Grayscale, Gaussian Blur, dan Sobel).
 Pustaka: numpy, os, cv2
 """
 
 import os
+from typing import Dict, List, Optional
 import cv2
 import numpy as np
 
@@ -101,7 +103,7 @@ def generate_synthetic_image(width: int, height: int) -> np.ndarray:
     return image_rgb
 
 
-def generate_all_test_images(output_dir: str = "data/input") -> dict[int, str]:
+def generate_all_test_images(output_dir: str = "data/input") -> Dict[int, str]:
     """
     Membuat 4 berkas citra masukan sintetis resolusi standar (512, 1024, 2048, 4096).
     Berkas disimpan dalam format PNG tanpa kompresi (cv2.IMWRITE_PNG_COMPRESSION = 0)
@@ -113,12 +115,11 @@ def generate_all_test_images(output_dir: str = "data/input") -> dict[int, str]:
     Returns:
         dict[int, str]: Pemetaan resolusi citra (int) ke path absolut berkas (str).
     """
-    # Pastikan direktori tujuan tersedia
     abs_output_dir = os.path.abspath(output_dir)
     os.makedirs(abs_output_dir, exist_ok=True)
 
     target_resolutions = [512, 1024, 2048, 4096]
-    generated_files: dict[int, str] = {}
+    generated_files: Dict[int, str] = {}
 
     print(f"[*] Memulai pembuatan dataset citra sintetis di: {abs_output_dir}")
 
@@ -128,13 +129,9 @@ def generate_all_test_images(output_dir: str = "data/input") -> dict[int, str]:
 
         print(f"    - Menghasilkan citra {res}x{res} piksel...", end=" ", flush=True)
 
-        # 1. Buat citra RGB sintetis
         image_rgb = generate_synthetic_image(width=res, height=res)
-
-        # 2. Konversi RGB ke BGR sebelum disimpan melalui OpenCV
         image_bgr = cv2.cvtColor(image_rgb, cv2.COLOR_RGB2BGR)
 
-        # 3. Simpan dengan PNG compression level = 0 (tanpa kompresi, I/O murni)
         cv2_write_flags = [cv2.IMWRITE_PNG_COMPRESSION, 0]
         success = cv2.imwrite(file_path, image_bgr, cv2_write_flags)
 
@@ -149,8 +146,59 @@ def generate_all_test_images(output_dir: str = "data/input") -> dict[int, str]:
     return generated_files
 
 
+def prepare_reference_multires_images(
+    master_path: str = "data/dataset_30/4096/img_01.png",
+    output_dir: str = "data/input",
+    target_resolutions: Optional[List[int]] = None
+) -> Dict[int, str]:
+    """
+    Menyiapkan citra acuan tunggal multiresolusi (512, 1024, 2048, 4096)
+    menggunakan teknik center-crop murni (tanpa interpolasi) dari citra master 4096px.
+
+    Args:
+        master_path: Path berkas citra master (default: data/dataset_30/4096/img_01.png).
+        output_dir: Direktori tempat menyimpan berkas potongan citra.
+        target_resolutions: Daftar resolusi target [512, 1024, 2048, 4096].
+
+    Returns:
+        Dict[int, str]: Pemetaan resolusi (int) ke path absolut berkas citra (str).
+    """
+    if target_resolutions is None:
+        target_resolutions = [512, 1024, 2048, 4096]
+
+    abs_output_dir = os.path.abspath(output_dir)
+    os.makedirs(abs_output_dir, exist_ok=True)
+
+    if not os.path.exists(master_path):
+        raise FileNotFoundError(f"Citra master tidak ditemukan di: {master_path}")
+
+    master_bgr = cv2.imread(master_path)
+    if master_bgr is None:
+        raise ValueError(f"Gagal membaca citra master dari: {master_path}")
+
+    h, w = master_bgr.shape[:2]
+    result_files: Dict[int, str] = {}
+
+    for res in target_resolutions:
+        filename = f"reference_{res}.png"
+        file_path = os.path.join(abs_output_dir, filename)
+
+        if res == h and res == w:
+            cropped = master_bgr
+        else:
+            if res > min(h, w):
+                raise ValueError(f"Resolusi target {res} melebihi dimensi citra master ({w}x{h})")
+            y_start = (h - res) // 2
+            x_start = (w - res) // 2
+            cropped = master_bgr[y_start:y_start + res, x_start:x_start + res]
+
+        cv2.imwrite(file_path, cropped, [cv2.IMWRITE_PNG_COMPRESSION, 1])
+        result_files[res] = file_path
+
+    return result_files
+
+
 if __name__ == "__main__":
-    # Eksekusi langsung pembuatan berkas citra sintetis
     output_directory = os.path.join("data", "input")
     results = generate_all_test_images(output_dir=output_directory)
 
