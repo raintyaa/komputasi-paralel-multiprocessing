@@ -12,6 +12,7 @@
   const BenchTab = {
     booted: false,
     running: false,
+    hadServerError: false,
     controller: null,
     abortTimer: null,
     lastRatio: 0,
@@ -49,6 +50,14 @@
       BenchTab.runGuidedStep("C", ["C"], "Skenario C (Analisis Kompleksitas)");
     });
 
+    // Perbarui stepper bila dropdown repetisi diubah
+    const repsEl = $("bench-reps-select");
+    if (repsEl) {
+      repsEl.addEventListener("change", () => {
+        BenchTab.updateStepperState(App.state.results);
+      });
+    }
+
     // Tombol Batch Run Penuh
     $("bench-run").addEventListener("click", BenchTab.runBatch);
     $("bench-cancel").addEventListener("click", BenchTab.cancel);
@@ -75,6 +84,15 @@
 
   /* ------------------------------------------------------- stepper state */
   BenchTab.updateStepperState = function (results) {
+    const selectedReps = parseInt($("bench-reps-select")?.value, 10) || 30;
+    // Basis target data per skenario:
+    // Skenario A: 4 resolusi * 3 filter = 12 kombinasi * reps
+    // Skenario B: 4 worker * 3 filter = 12 kombinasi * reps
+    // Skenario C: 3 filter = 3 kombinasi * reps
+    const targetA = 12 * selectedReps;
+    const targetB = 12 * selectedReps;
+    const targetC = 3 * selectedReps;
+
     if (!results || !results.rows || !results.rows.length) {
       BenchTab.setStepStatus("A", "ready", "Siap");
       BenchTab.setStepStatus("B", "locked", "Terkunci (Jalankan Tahap 1)");
@@ -82,28 +100,42 @@
       return;
     }
 
-    const scenarios = new Set(results.rows.map((r) => r.scenario));
     const countA = results.rows.filter((r) => r.scenario === "A").length;
     const countB = results.rows.filter((r) => r.scenario === "B").length;
     const countC = results.rows.filter((r) => r.scenario === "C").length;
 
-    if (scenarios.has("A")) {
-      BenchTab.setStepStatus("A", "done", `Selesai (${countA} data)`);
-      BenchTab.setStepStatus("B", "ready", "Siap");
+    // Evaluasi Tahap A
+    const isADone = countA >= targetA;
+    if (isADone) {
+      BenchTab.setStepStatus("A", "done", `Selesai (${countA}/${targetA} data)`);
+    } else if (countA > 0) {
+      BenchTab.setStepStatus("A", "partial", `Belum Lengkap (${countA}/${targetA} data)`);
     } else {
       BenchTab.setStepStatus("A", "ready", "Siap");
-      BenchTab.setStepStatus("B", "locked", "Terkunci (Jalankan Tahap 1)");
     }
 
-    if (scenarios.has("B")) {
-      BenchTab.setStepStatus("B", "done", `Selesai (${countB} data)`);
+    // Evaluasi Tahap B (hanya siap jika Tahap A sudah tuntas)
+    const isBDone = isADone && countB >= targetB;
+    if (!isADone) {
+      BenchTab.setStepStatus("B", "locked", "Terkunci (Selesaikan Tahap 1)");
+    } else if (isBDone) {
+      BenchTab.setStepStatus("B", "done", `Selesai (${countB}/${targetB} data)`);
+    } else if (countB > 0) {
+      BenchTab.setStepStatus("B", "partial", `Belum Lengkap (${countB}/${targetB} data)`);
+    } else {
+      BenchTab.setStepStatus("B", "ready", "Siap");
+    }
+
+    // Evaluasi Tahap C (hanya siap jika Tahap B sudah tuntas)
+    const isCDone = isBDone && countC >= targetC;
+    if (!isBDone) {
+      BenchTab.setStepStatus("C", "locked", "Terkunci (Selesaikan Tahap 2)");
+    } else if (isCDone) {
+      BenchTab.setStepStatus("C", "done", `Selesai (${countC}/${targetC} data)`);
+    } else if (countC > 0) {
+      BenchTab.setStepStatus("C", "partial", `Belum Lengkap (${countC}/${targetC} data)`);
+    } else {
       BenchTab.setStepStatus("C", "ready", "Siap");
-    } else if (scenarios.has("A")) {
-      BenchTab.setStepStatus("C", "locked", "Terkunci (Jalankan Tahap 2)");
-    }
-
-    if (scenarios.has("C")) {
-      BenchTab.setStepStatus("C", "done", `Selesai (${countC} data)`);
     }
   };
 
@@ -114,17 +146,29 @@
 
     if (badge) {
       badge.textContent = text;
-      badge.className = "badge-pill text-[11px] " + (
-        status === "done" ? "badge-success text-emerald-800 bg-emerald-50 border-emerald-200" :
-        status === "ready" ? "text-primary bg-primary/10 border-primary/20" :
-        "text-text-muted bg-surface-subtle border-border"
-      );
+      let badgeCls = "text-text-muted bg-surface-subtle border-border";
+      if (status === "done") {
+        badgeCls = "badge-success text-emerald-800 bg-emerald-50 border-emerald-200";
+      } else if (status === "ready") {
+        badgeCls = "text-primary bg-primary/10 border-primary/20";
+      } else if (status === "partial") {
+        badgeCls = "text-amber-800 bg-amber-50 border-amber-200";
+      } else if (status === "running") {
+        badgeCls = "text-blue-800 bg-blue-50 border-blue-200 animate-pulse";
+      }
+      badge.className = `badge-pill text-[11px] ${badgeCls}`;
     }
     if (btn) {
-      btn.disabled = status === "locked";
+      btn.disabled = status === "locked" || status === "running" || BenchTab.running;
       if (status === "done") {
         btn.className = "btn btn-secondary text-xs py-1.5 px-3";
         btn.innerHTML = `<span data-icon="rotate-cw"></span> Uji Ulang Tahap ${step}`;
+      } else if (status === "partial") {
+        btn.className = "btn btn-primary text-xs py-1.5 px-3";
+        btn.innerHTML = `<span data-icon="play"></span> Lanjutkan/Ulang Tahap ${step}`;
+      } else if (status === "running") {
+        btn.className = "btn btn-secondary text-xs py-1.5 px-3";
+        btn.innerHTML = `<span data-icon="loader"></span> Menguji Tahap ${step}...`;
       } else if (status === "ready") {
         btn.className = "btn btn-primary text-xs py-1.5 px-3";
         btn.innerHTML = `<span data-icon="play"></span> Jalankan Tahap ${step}`;
@@ -246,6 +290,7 @@
     let failed = false;
 
     BenchTab.running = true;
+    BenchTab.hadServerError = false;
     BenchTab.controller = new AbortController();
 
     // Disable all run buttons
@@ -254,6 +299,10 @@
       const b = $(`btn-step-${s}`);
       if (b) b.disabled = true;
     });
+
+    if (stepCode) {
+      BenchTab.setStepStatus(stepCode, "running", `Sedang Menguji Tahap ${stepCode}...`);
+    }
 
     $("bench-cancel").hidden = false;
     $("bench-cancel").disabled = false;
@@ -305,7 +354,7 @@
       if (window.ChartsTab) window.ChartsTab.refreshData();
 
       const rows = App.state.results ? App.state.results.count : 0;
-      if (failed) App.setRunStatus("error", "Eksperimen gagal — periksa logger");
+      if (failed || BenchTab.hadServerError) App.setRunStatus("error", "Eksperimen gagal — periksa logger");
       else if (cancelled) App.setRunStatus("warning", "Eksperimen dibatalkan — data tersimpan");
       else App.setRunStatus("ready", `Deterministic Engine Ready · ${rows} baris hasil tersimpan`);
     }
@@ -403,6 +452,7 @@
         break;
 
       case "error":
+        BenchTab.hadServerError = true;
         BenchTab.logMessage(`Server melaporkan error: ${e.message}`, "error");
         break;
     }

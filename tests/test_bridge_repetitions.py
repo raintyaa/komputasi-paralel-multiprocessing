@@ -31,6 +31,20 @@ class TestBridgeRepetitions(unittest.TestCase):
         self.assertIn(1, iterations_found)
         self.assertIn(2, iterations_found)
 
+    def test_stream_benchmark_events_cooldown(self):
+        # Quick run on single_image with 1 rep and cool_down_seconds > 0 to verify time.sleep
+        events = list(bridge.stream_benchmark_events(
+            basis="single_image",
+            mode="quick",
+            scenarios=["A"],
+            repetitions=1,
+            cool_down_seconds=0.01
+        ))
+        cooldown_events = [e for e in events if e.get("type") == "cooldown"]
+        self.assertGreater(len(cooldown_events), 0, "Harus ada minimal satu event cooldown saat cool_down_seconds > 0")
+        complete_events = [e for e in events if e.get("type") == "complete"]
+        self.assertEqual(len(complete_events), 1, "Harus ada satu event complete tanpa exception")
+
 
 if __name__ == "__main__":
     unittest.main()
