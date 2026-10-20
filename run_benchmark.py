@@ -1,8 +1,9 @@
 """
 Modul: run_benchmark.py
 Deskripsi: Master Orchestrator untuk menjalankan eksperimen benchmark komputasi paralel
-           secara otomatis, berbasis 30 sampel citra fotografi nyata multiresolusi (120 berkas),
-           tervalidasi 100% bit-identik, dan terintegrasi langsung dengan modul visualisasi 300 DPI.
+           secara otomatis, berbasis 1 citra acuan master multiresolusi center-crop
+           dengan 30 repetisi perlakuan (memenuhi Central Limit Theorem), tervalidasi
+           100% bit-identik, dan terintegrasi langsung dengan modul visualisasi 300 DPI.
 Penanggung Jawab: Muhammad Zaki Rakha Bahy (Lead Architect)
 """
 
@@ -18,7 +19,7 @@ import numpy as np
 import pandas as pd
 
 # Impor modul pilar sistem
-from src.image_generator import generate_all_test_images
+from src.image_generator import generate_all_test_images, prepare_reference_multires_images
 from src.filters import apply_grayscale, apply_gaussian_blur, apply_sobel
 from src.serial_engine import run_serial
 from src.parallel_engine import run_parallel
@@ -57,12 +58,42 @@ def load_image_rgb(file_path: str) -> np.ndarray:
     return cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
 
 
-def get_dataset_mapping(use_real_30: bool = True, samples_limit: int = 30) -> Dict[int, List[Tuple[str, str]]]:
+def get_dataset_mapping(
+    use_reference_image: bool = True,
+    use_real_30: bool = False,
+    samples_limit: int = 30
+) -> Dict[int, List[Tuple[str, str]]]:
     """
     Mengembalikan mapping resolusi ke daftar pasangan (image_name, absolute_path).
-    Mendukung dataset 30 citra fotografi nyata atau fallback citra sintetis.
+    Prioritas:
+    1. Citra acuan tunggal center-crop (img_01.png master) jika use_reference_image=True.
+    2. Dataset 30 citra fotografi nyata jika use_real_30=True.
+    3. Fallback citra sintetis standar.
     """
     res_dict = {}
+
+    if use_reference_image:
+        master_path = os.path.join("data", "dataset_30", "4096", "img_01.png")
+        input_dir = os.path.join("data", "input")
+        # Pastikan citra reference sudah siap
+        all_ready = all(
+            os.path.exists(os.path.join(input_dir, f"reference_{r}.png"))
+            for r in [512, 1024, 2048, 4096]
+        )
+        if not all_ready and os.path.exists(master_path):
+            prepare_reference_multires_images(master_path=master_path, output_dir=input_dir)
+
+        for res in [512, 1024, 2048, 4096]:
+            ref_path = os.path.join(input_dir, f"reference_{res}.png")
+            if os.path.exists(ref_path):
+                res_dict[res] = [(f"ref_img_01_{res}px", os.path.abspath(ref_path))]
+            else:
+                p = os.path.join(input_dir, f"input_{res}.png")
+                if not os.path.exists(p):
+                    generate_all_test_images(output_dir=input_dir)
+                res_dict[res] = [(f"synthetic_{res}.png", os.path.abspath(p))]
+        return res_dict
+
     for res in [512, 1024, 2048, 4096]:
         dir_path = os.path.join("data", "dataset_30", str(res))
         if use_real_30 and os.path.exists(dir_path):
@@ -71,7 +102,7 @@ def get_dataset_mapping(use_real_30: bool = True, samples_limit: int = 30) -> Di
                 res_dict[res] = [(os.path.basename(f), os.path.abspath(f)) for f in files]
                 continue
 
-        # Fallback ke dataset sintetis jika dataset 30 tidak ditemukan
+        # Fallback ke dataset sintetis
         p = os.path.join("data", "input", f"input_{res}.png")
         if not os.path.exists(p):
             generate_all_test_images(output_dir="data/input")
@@ -98,50 +129,32 @@ def run_single_experiment(
     filter_func = filter_info["func"]
     k_radius = filter_info["k_radius"]
 
-    # 1. Serial Baseline (P = 1)
-    if t_serial_cached is None or res_serial_cached is None:
-        cpu_mon_serial = CPUMonitor(interval=0.02)
-        cpu_mon_serial.start()
-        res_serial, t_serial = run_serial(image, filter_func)
-        cpu_stats_serial = cpu_mon_serial.stop()
-    else:
-        res_serial = res_serial_cached
+    # 1. Serial Baseline Execution
+    if t_serial_cached is not None and res_serial_cached is not None:
         t_serial = t_serial_cached
-        cpu_stats_serial = {"mean_cpu_percent": 0.0}
+        res_serial = res_serial_cached
+    else:
+        res_serial, t_serial = run_serial(image, filter_func)
 
-    # Jika pengujian memang untuk P = 1
-    if p_workers == 1:
-        metrics = calculate_metrics(t_serial, t_serial, p_processes=1)
-        return {
-            "t_serial": t_serial,
-            "t_parallel": t_serial,
-            "speedup": metrics["speedup"],
-            "efficiency": metrics["efficiency"],
-            "overhead": metrics["overhead"],
-            "cpu_utilization": cpu_stats_serial["mean_cpu_percent"],
-            "is_identical": True,
-            "max_diff": 0.0,
-            "res_serial": res_serial,
-            "t_serial_base": t_serial
-        }
+    # 2. Parallel Execution dengan Pemantauan CPU
+    monitor = CPUMonitor(interval=0.02)
+    monitor.start()
 
-    # 2. Paralel (P > 1) dengan CPU Monitoring
-    cpu_mon = CPUMonitor(interval=0.02)
-    cpu_mon.start()
     res_parallel, t_parallel = run_parallel(
-        image=image,
-        filter_func=filter_func,
+        image,
+        filter_func,
         p_processes=p_workers,
         kernel_radius=k_radius,
         existing_pool=existing_pool
     )
-    cpu_stats = cpu_mon.stop()
 
-    # 3. Validasi Bit-Identik
+    cpu_stats = monitor.stop()
+
+    # 3. Validasi Keidentikan Bit Piksel Mutlak
     is_valid, max_diff = validate_results(res_serial, res_parallel)
 
-    # 4. Hitung Metrik
-    metrics = calculate_metrics(t_serial, t_parallel, p_processes=p_workers)
+    # 4. Perhitungan Metrik Saintifik
+    metrics = calculate_metrics(t_serial, t_parallel, p_workers)
 
     return {
         "t_serial": t_serial,
@@ -157,20 +170,32 @@ def run_single_experiment(
     }
 
 
-def execute_full_benchmark(samples_limit: int = 30, quick_mode: bool = False, use_real_30: bool = True) -> pd.DataFrame:
+def execute_full_benchmark(
+    repetitions: int = 30,
+    quick_mode: bool = False,
+    use_reference_image: bool = True,
+    use_real_30: bool = False,
+    samples_limit: int = 30
+) -> pd.DataFrame:
     """
-    Mengeksekusi matriks benchmark penuh sesuai metodologi proposal:
-    - Skenario A: Variasi Resolusi (512, 1024, 2048, 4096 px) pada P = 4 (30 citra x 3 filter x 4 res = 360 runs)
-    - Skenario B: Skalabilitas Worker (P = 1, 2, 4, 8) pada Resolusi 2048 px (30 citra x 3 filter x 4 P = 360 runs)
-    - Skenario C: Analisis Kompleksitas 3 Filter pada 2048 px & P = 4 (30 citra x 3 filter = 90 runs)
-    Total: 810 runs (atau 27 runs jika samples_limit=1).
+    Mengeksekusi matriks benchmark komputasi paralel:
+    - Skenario A: Variasi Resolusi (512, 1024, 2048, 4096 px) pada P = 4
+    - Skenario B: Skalabilitas Worker (P = 1, 2, 4, 8) pada Resolusi 2048 px
+    - Skenario C: Analisis Kompleksitas 3 Filter pada 2048 px & P = 4
+    Setiap perlakuan diulang sebanyak `repetitions` kali (default: 30x).
     """
+    reps = 3 if quick_mode and repetitions == 30 else repetitions
+
     print("\n" + "="*85)
     print("   MASTER BENCHMARK ORCHESTRATOR: KOMPUTASI PARALEL MULTIPROCESSING")
-    print(f"   Target Sampel: {samples_limit} Berkas Citra per Resolusi | Basis: {'Dataset 30 Nyata' if use_real_30 else 'Sintetis'}")
+    print(f"   Metodologi: 1 Citra Acuan Master Center-Crop | Repetisi Pengujian: {reps}x Putaran")
     print("="*85)
 
-    dataset_dict = get_dataset_mapping(use_real_30=use_real_30, samples_limit=samples_limit)
+    dataset_dict = get_dataset_mapping(
+        use_reference_image=use_reference_image,
+        use_real_30=use_real_30,
+        samples_limit=samples_limit
+    )
 
     resolutions_a = [512, 1024] if quick_mode else [512, 1024, 2048, 4096]
     workers_b = [1, 2] if quick_mode else [1, 2, 4, 8]
@@ -188,23 +213,24 @@ def execute_full_benchmark(samples_limit: int = 30, quick_mode: bool = False, us
     # 1. SKENARIO A: Variasi Resolusi Matriks Citra (P = 4)
     # ==========================================================================
     print("\n" + "-"*85)
-    print(">>> [1/3] SKENARIO A: PENGARUH RESOLUSI CITRA (P = 4 Inti Pekerja)")
-    print(f"    Resolusi: {resolutions_a} | Jumlah Citra per Resolusi: {len(dataset_dict[resolutions_a[0]])}")
+    print(f">>> [1/3] SKENARIO A: PENGARUH RESOLUSI CITRA (P = 4 Inti Pekerja, {reps} Repetisi)")
+    print(f"    Resolusi: {resolutions_a}")
     print("-"*85)
 
     pool_4 = pools[4]
 
     for res in resolutions_a:
         img_list = dataset_dict[res]
-        print(f"\n[+] Mengeksekusi Resolusi {res}x{res} px ({len(img_list)} sampel citra):")
+        print(f"\n[+] Mengeksekusi Resolusi {res}x{res} px ({reps} repetisi per filter):")
 
         for f_info in FILTERS_CONFIG:
             f_name = f_info["name"]
             print(f"    -> Filter {f_name:<14}: [", end="", flush=True)
 
-            for idx, (img_name, img_path) in enumerate(img_list):
-                img_rgb = load_image_rgb(img_path)
+            img_name, img_path = img_list[0]
+            img_rgb = load_image_rgb(img_path)
 
+            for it in range(1, reps + 1):
                 cache_key = (f_name, res, img_name)
                 cached = serial_cache.get(cache_key, (None, None))
 
@@ -225,6 +251,7 @@ def execute_full_benchmark(samples_limit: int = 30, quick_mode: bool = False, us
                     "filter": f_name,
                     "resolution": res,
                     "image_id": img_name,
+                    "iteration": it,
                     "p": 4,
                     "t_serial": round(res_data["t_serial"], 6),
                     "t_parallel": round(res_data["t_parallel"], 6),
@@ -237,34 +264,33 @@ def execute_full_benchmark(samples_limit: int = 30, quick_mode: bool = False, us
                 })
                 print("#", end="", flush=True)
 
-            print(f"] Selesai ({len(img_list)} citra)")
+            print(f"] Selesai ({reps} iterasi)")
 
     # ==========================================================================
     # 2. SKENARIO B: Skalabilitas Jumlah Proses Pekerja (P = 1, 2, 4, 8)
     # ==========================================================================
     print("\n" + "-"*85)
-    print(f">>> [2/3] SKENARIO B: SKALABILITAS WORKER P IN {workers_b} (Resolusi {base_res_b}x{base_res_b})")
-    print(f"    Jumlah Sampel Citra: {len(dataset_dict[base_res_b])}")
+    print(f">>> [2/3] SKENARIO B: SKALABILITAS WORKER P IN {workers_b} (Resolusi {base_res_b}x{base_res_b}, {reps} Repetisi)")
     print("-"*85)
 
     img_b_list = dataset_dict[base_res_b]
+    img_name_b, img_path_b = img_b_list[0]
+    img_rgb_b = load_image_rgb(img_path_b)
 
     for p in workers_b:
-        print(f"\n[*] Menguji Alokasi P = {p} Worker Proses ({len(img_b_list)} sampel citra):")
+        print(f"\n[*] Menguji Alokasi P = {p} Worker Proses ({reps} repetisi per filter):")
         pool_p = pools.get(p, None)
 
         for f_info in FILTERS_CONFIG:
             f_name = f_info["name"]
             print(f"    -> Filter {f_name:<14} (P={p}): [", end="", flush=True)
 
-            for idx, (img_name, img_path) in enumerate(img_b_list):
-                img_rgb = load_image_rgb(img_path)
-
-                cache_key = (f_name, base_res_b, img_name)
+            for it in range(1, reps + 1):
+                cache_key = (f_name, base_res_b, img_name_b)
                 cached = serial_cache.get(cache_key, (None, None))
 
                 res_data = run_single_experiment(
-                    image=img_rgb,
+                    image=img_rgb_b,
                     filter_info=f_info,
                     p_workers=p,
                     t_serial_cached=cached[0],
@@ -279,7 +305,8 @@ def execute_full_benchmark(samples_limit: int = 30, quick_mode: bool = False, us
                     "scenario": "B",
                     "filter": f_name,
                     "resolution": base_res_b,
-                    "image_id": img_name,
+                    "image_id": img_name_b,
+                    "iteration": it,
                     "p": p,
                     "t_serial": round(res_data["t_serial"], 6),
                     "t_parallel": round(res_data["t_parallel"], 6),
@@ -334,7 +361,7 @@ def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_re
     df.to_csv(latest_csv, index=False)
     print(f"\n[+] Raw Data ({len(df)} baris) berhasil disimpan ke:\n    -> {os.path.abspath(raw_csv)}\n    -> {os.path.abspath(latest_csv)}")
 
-    # 2. Simpan Ringkasan Statistik Empiris (27 Baris Perlakuan Standar)
+    # 2. Simpan Ringkasan Statistik Empiris
     summary_df = df.groupby(["scenario", "filter", "resolution", "p"]).agg(
         sampel_count=("speedup", "count"),
         t_serial_mean=("t_serial", "mean"),
@@ -375,16 +402,22 @@ def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_re
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Master Benchmark Orchestrator - Komputasi Paralel")
-    parser.add_argument("--samples", type=int, default=30, help="Jumlah sampel citra per perlakuan (default: 30 citra)")
-    parser.add_argument("--quick", action="store_true", help="Jalankan uji coba cepat (1 sampel citra, resolusi 512-1024, P 1-2)")
-    parser.add_argument("--synthetic", action="store_true", help="Gunakan citra sintetis alih-alih 30 citra nyata")
+    parser.add_argument("--repetitions", type=int, default=30, help="Jumlah repetisi pengujian per perlakuan (default: 30x)")
+    parser.add_argument("--quick", action="store_true", help="Jalankan uji coba cepat (3 repetisi, resolusi 512-1024, P 1-2)")
+    parser.add_argument("--synthetic", action="store_true", help="Gunakan citra sintetis alih-alih citra acuan fotografi")
+    parser.add_argument("--dataset-30", action="store_true", help="Gunakan mode lama 30 berkas citra berbeda")
     args = parser.parse_args()
 
-    n_samples = 1 if args.quick else args.samples
-    use_real = not args.synthetic
+    use_ref = not args.synthetic and not args.dataset_30
+    use_real = args.dataset_30
 
     t_start_total = time.perf_counter()
-    benchmark_df = execute_full_benchmark(samples_limit=n_samples, quick_mode=args.quick, use_real_30=use_real)
+    benchmark_df = execute_full_benchmark(
+        repetitions=args.repetitions,
+        quick_mode=args.quick,
+        use_reference_image=use_ref,
+        use_real_30=use_real
+    )
     save_and_visualize(benchmark_df, output_csv="results/benchmark_results.csv")
     t_total = time.perf_counter() - t_start_total
 
