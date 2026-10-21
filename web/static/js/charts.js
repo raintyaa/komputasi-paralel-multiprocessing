@@ -104,6 +104,35 @@
     scales: baseScales(),
   });
 
+  /* ------------------------------------------------------------ export utilities */
+  ChartsTab.downloadCanvasAsPng = function (canvasId, fileName) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) {
+      console.warn(`Canvas dengan ID "${canvasId}" tidak ditemukan.`);
+      return;
+    }
+    try {
+      // Buat canvas sementara berlatar putih pekat (mencegah latar transparan saat di-paste ke Word)
+      const exportCanvas = document.createElement("canvas");
+      exportCanvas.width = canvas.width;
+      exportCanvas.height = canvas.height;
+      const ctx = exportCanvas.getContext("2d");
+      ctx.fillStyle = "#FFFFFF";
+      ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+      ctx.drawImage(canvas, 0, 0);
+
+      const url = exportCanvas.toDataURL("image/png");
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName.endsWith(".png") ? fileName : `${fileName}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } catch (err) {
+      console.error("Gagal mengunduh canvas grafik:", err);
+    }
+  };
+
   /* ------------------------------------------------------------ init */
   ChartsTab.init = async function () {
     ChartsTab.booted = true;
@@ -111,6 +140,41 @@
     $("amdahl-f").addEventListener("input", ChartsTab.rebuildAmdahl);
     $("amdahl-p").addEventListener("input", ChartsTab.rebuildAmdahl);
     ChartsTab.rebuildAmdahl();
+
+    // Unduh PNG canvas simulasi Amdahl
+    const btnAmdahl = $("btn-dl-amdahl-png");
+    if (btnAmdahl) {
+      btnAmdahl.addEventListener("click", () => {
+        const f = Number($("amdahl-f").value).toFixed(2);
+        ChartsTab.downloadCanvasAsPng("amdahl-chart", `simulasi_kurva_hukum_amdahl_f${f}`);
+      });
+    }
+
+    // Unduh PNG per kanvas grafik empiris
+    document.querySelectorAll(".btn-dl-canvas").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const targetId = btn.getAttribute("data-canvas");
+        const name = btn.getAttribute("data-name") || "grafik_komputasi_paralel";
+        ChartsTab.downloadCanvasAsPng(targetId, name);
+      });
+    });
+
+    // Unduh plot publikasi ilmiah 300 DPI Matplotlib per skenario aktif
+    const btnScenPlot = $("btn-dl-scenario-plot-300dpi");
+    if (btnScenPlot) {
+      btnScenPlot.addEventListener("click", () => {
+        const which = $("plot-select").value || "A";
+        window.location.assign(`/api/benchmark/plots/single/${which}`);
+      });
+    }
+
+    // Unduh paket lengkap seluruh plot 300 DPI dalam arsip ZIP
+    const btnZip = $("btn-dl-all-plots-zip");
+    if (btnZip) {
+      btnZip.addEventListener("click", () => {
+        window.location.assign("/api/benchmark/plots/bundle/zip");
+      });
+    }
 
     $("plot-select").addEventListener("change", ChartsTab.renderScenario);
     await ChartsTab.refreshData();

@@ -16,12 +16,14 @@ Endpoint:
 import io
 import json
 import logging
+import zipfile
+from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import numpy as np
 from fastapi import APIRouter, HTTPException
 from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import StreamingResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..services import bridge
@@ -277,6 +279,110 @@ async def export_summary_csv():
         headers={
             "Content-Disposition": (
                 'attachment; filename="benchmark_results_summary.csv"'
+            )
+        },
+    )
+
+
+# ---------------------------------------------------------------------------
+# Generator & Unduhan Plot Publikasi Ilmiah 300 DPI (Matplotlib)
+# ---------------------------------------------------------------------------
+def _ensure_plots_generated(force: bool = False) -> Dict[str, Path]:
+    csv_path = bridge.BENCH_CSV_PATH
+    if not csv_path.exists():
+        raise LookupError("Belum ada berkas CSV hasil benchmark untuk membuat grafik.")
+
+    plots_dir = bridge.RESULTS_DIR / "plots"
+    plots_dir.mkdir(parents=True, exist_ok=True)
+
+    from src.visualizer import plot_scenario_a, plot_scenario_b, plot_scenario_c
+
+    plot_files = {
+        "A": plots_dir / "skenario_a_resolusi.png",
+        "B": plots_dir / "skenario_b_amdahl.png",
+        "C": plots_dir / "skenario_c_kompleksitas.png",
+    }
+
+    csv_mtime = csv_path.stat().st_mtime
+    for scen, ppath in plot_files.items():
+        if force or not ppath.exists() or ppath.stat().st_mtime < csv_mtime:
+            try:
+                if scen == "A":
+                    plot_scenario_a(str(csv_path), output_path=str(ppath))
+                elif scen == "B":
+                    plot_scenario_b(str(csv_path), output_path=str(ppath))
+                elif scen == "C":
+                    plot_scenario_c(str(csv_path), output_path=str(ppath))
+            except Exception as exc:
+                logger.warning("Gagal men-generate plot Skenario %s: %s", scen, exc)
+
+    return plot_files
+
+
+def _build_plots_zip_bytes() -> bytes:
+    plot_files = _ensure_plots_generated(force=False)
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as z:
+        for scen, ppath in plot_files.items():
+            if ppath.exists():
+                z.write(ppath, arcname=ppath.name)
+        readme = (
+            "=========================================================================\n"
+            "PAKET GRAFIK PUBLIKASI ILMIAH KOMPUTASI PARALEL (300 DPI)\n"
+            "Laboratorium Komputasi Paralel & Pemrosesan Citra - FMIPA UNTAN\n"
+            "=========================================================================\n\n"
+            "Berkas grafik ini dihasilkan secara otomatis dari data empiris benchmark:\n"
+            "Lokasi data: results/benchmark_results_latest.csv\n\n"
+            "Daftar Grafik:\n"
+            "1. skenario_a_resolusi.png     : Kurva Speedup vs Variasi Resolusi (512-4096 px) pada P=4\n"
+            "2. skenario_b_amdahl.png       : Evaluasi Skalabilitas Worker (P=1,2,4,8) vs Batas Hukum Amdahl\n"
+            "3. skenario_c_kompleksitas.png : Perbandingan Kompleksitas Filter, Overhead, & Utilisasi CPU\n\n"
+            "Standar Format: Resolusi 300 DPI, bounding box ketat, tipografi publikasi jurnal.\n"
+        )
+        z.writestr("README_GRAFIK.txt", readme)
+    return buf.getvalue()
+
+
+@router.get("/plots/single/{scenario}", summary="Unduh satu plot publikasi ilmiah 300 DPI")
+async def download_single_plot(scenario: str):
+    """Mengunduh gambar plot 300 DPI siap cetak untuk skenario tertentu (A, B, atau C)."""
+    scen_upper = scenario.strip().upper()
+    if scen_upper not in ("A", "B", "C"):
+        raise HTTPException(status_code=400, detail="Skenario harus 'A', 'B', atau 'C'")
+
+    try:
+        plot_files = await run_in_threadpool(_ensure_plots_generated, force=False)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from None
+
+    target_path = plot_files.get(scen_upper)
+    if not target_path or not target_path.exists():
+        raise HTTPException(
+            status_code=404, detail=f"Plot untuk Skenario {scen_upper} belum tersedia"
+        )
+
+    filename = f"plot_skenario_{scen_upper.lower()}_300dpi.png"
+    return FileResponse(
+        path=target_path,
+        media_type="image/png",
+        filename=filename,
+    )
+
+
+@router.get("/plots/bundle/zip", summary="Unduh seluruh plot publikasi 300 DPI dalam arsip ZIP")
+async def download_plots_bundle():
+    """Mengunduh seluruh grafik publikasi 300 DPI (A, B, C) dalam paket ZIP siap laporan."""
+    try:
+        zip_bytes = await run_in_threadpool(_build_plots_zip_bytes)
+    except LookupError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from None
+
+    return StreamingResponse(
+        iter([zip_bytes]),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": (
+                'attachment; filename="plots_publikasi_ilmiah_300dpi.zip"'
             )
         },
     )

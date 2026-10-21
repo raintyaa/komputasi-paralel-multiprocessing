@@ -62,12 +62,16 @@
     $("bench-run").addEventListener("click", BenchTab.runBatch);
     $("bench-cancel").addEventListener("click", BenchTab.cancel);
 
-    // Unduhan CSV
-    ["bench-dl-raw", "bench-dl-summary"].forEach((id) => {
-      $(id).addEventListener("click", () => {
+    // Unduhan CSV & Plot Laporan
+    ["bench-dl-raw", "bench-dl-summary", "bench-dl-plots"].forEach((id) => {
+      const el = $(id);
+      if (!el) return;
+      el.addEventListener("click", () => {
         const url = id === "bench-dl-raw"
           ? "/api/benchmark/results/raw-csv"
-          : "/api/benchmark/results/summary-csv";
+          : id === "bench-dl-summary"
+          ? "/api/benchmark/results/summary-csv"
+          : "/api/benchmark/plots/bundle/zip";
         window.location.assign(url);
       });
     });
@@ -197,6 +201,7 @@
       $("bench-summary-details").hidden = true;
       $("bench-dl-raw").disabled = true;
       $("bench-dl-summary").disabled = true;
+      if ($("bench-dl-plots")) $("bench-dl-plots").disabled = true;
       $("bench-chart-refresh").disabled = true;
       App.setBtnLabel("bench-dl-raw", "Data Mentah");
       App.setBtnLabel("bench-dl-summary", "Ringkasan");
@@ -228,6 +233,7 @@
       .join("");
     $("bench-dl-raw").disabled = false;
     $("bench-dl-summary").disabled = false;
+    if ($("bench-dl-plots")) $("bench-dl-plots").disabled = false;
     App.setBtnLabel("bench-dl-raw", `Data Mentah (${res.count} Baris)`);
     $("bench-chart-refresh").disabled = false;
   };

@@ -550,12 +550,15 @@
               </table>
             </div>
 
-            <div class="grid gap-3 sm:grid-cols-3">
+            <div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               <button class="btn btn-secondary" id="bench-dl-raw" type="button" disabled>
                 <span data-icon="download"></span><span class="btn-label">Data Mentah</span>
               </button>
               <button class="btn btn-secondary" id="bench-dl-summary" type="button" disabled>
                 <span data-icon="download"></span><span class="btn-label">Ringkasan</span>
+              </button>
+              <button class="btn btn-secondary" id="bench-dl-plots" type="button" disabled title="Unduh kumpulan gambar grafik publikasi ilmiah (300 DPI) dalam format ZIP">
+                <span data-icon="image"></span><span class="btn-label">Plot Laporan (300 DPI)</span>
               </button>
               <button class="btn btn-secondary" id="bench-chart-refresh" type="button" disabled>
                 <span data-icon="trending-up"></span><span class="btn-label">Segarkan Grafik</span>
@@ -647,6 +650,12 @@
               </div>
             </div>
 
+            <div class="flex items-center justify-between pt-1">
+              <span class="caption-small font-semibold text-text-muted">Kurva Karakteristik Amdahl vs Empiris</span>
+              <button class="btn btn-secondary text-xs py-1 px-2.5" id="btn-dl-amdahl-png" type="button" title="Unduh grafik simulasi Amdahl dalam format PNG">
+                <span data-icon="download"></span> Unduh PNG
+              </button>
+            </div>
             <div class="chart-wrap min-h-[340px]"><canvas id="amdahl-chart"></canvas></div>
             <p class="caption-small">
               Titik-titik empiris (jika tersedia) diambil dari hasil Skenario B pada CSV
@@ -668,28 +677,76 @@
             <span class="badge-capsule">Visualisasi Empiris</span>
           </div>
           <div class="card-body space-y-4">
-            <div>
-              <label class="form-label" for="plot-select">Pilih Grafik Analisis Dinamis</label>
-              <select class="select-input" id="plot-select">
-                <option value="A">Skenario A: Pengaruh Resolusi Citra (512&ndash;4096 px)</option>
-                <option value="B">Skenario B: Skalabilitas Worker &amp; Saturasi Core (P=1..8)</option>
-                <option value="C">Skenario C: Efisiensi Berdasarkan Kompleksitas Algoritma</option>
-              </select>
+            <div class="flex flex-col sm:flex-row sm:items-end justify-between gap-3 border-b border-border/70 pb-3">
+              <div class="flex-1">
+                <label class="form-label" for="plot-select">Pilih Grafik Analisis Dinamis</label>
+                <select class="select-input" id="plot-select">
+                  <option value="A">Skenario A: Pengaruh Resolusi Citra (512&ndash;4096 px)</option>
+                  <option value="B">Skenario B: Skalabilitas Worker &amp; Saturasi Core (P=1..8)</option>
+                  <option value="C">Skenario C: Efisiensi Berdasarkan Kompleksitas Algoritma</option>
+                </select>
+              </div>
+              <div class="flex flex-wrap items-center gap-2">
+                <button class="btn btn-primary text-xs py-1.5 px-3" id="btn-dl-scenario-plot-300dpi" type="button" title="Unduh gambar standar publikasi 300 DPI Matplotlib untuk skenario ini">
+                  <span data-icon="image"></span> Unduh Plot 300 DPI
+                </button>
+                <button class="btn btn-secondary text-xs py-1.5 px-3" id="btn-dl-all-plots-zip" type="button" title="Unduh seluruh plot publikasi ilmiah (A, B, C) dalam satu file ZIP">
+                  <span data-icon="download"></span> Semua Plot (ZIP)
+                </button>
+              </div>
             </div>
 
             <p class="plot-empty-note" id="plot-empty" hidden></p>
 
             <div id="plot-wrap-a" class="space-y-4">
-              <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-time"></canvas></div>
-              <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-speedup"></canvas></div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="caption-small font-semibold text-text-muted">Waktu Eksekusi Serial (Ts) vs Paralel (Tp)</span>
+                  <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-a-time" data-name="skenario_a_waktu_eksekusi" type="button">
+                    <span data-icon="download"></span> Unduh PNG
+                  </button>
+                </div>
+                <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-time"></canvas></div>
+              </div>
+              <div class="space-y-1">
+                <div class="flex items-center justify-between">
+                  <span class="caption-small font-semibold text-text-muted">Grafik Speedup vs Resolusi Citra</span>
+                  <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-a-speedup" data-name="skenario_a_speedup" type="button">
+                    <span data-icon="download"></span> Unduh PNG
+                  </button>
+                </div>
+                <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-speedup"></canvas></div>
+              </div>
             </div>
-            <div id="plot-wrap-b" hidden>
+            <div id="plot-wrap-b" class="space-y-1" hidden>
+              <div class="flex items-center justify-between">
+                <span class="caption-small font-semibold text-text-muted">Kurva Skalabilitas Worker (P=1..8) vs Batas Teoretis Amdahl</span>
+                <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-b" data-name="skenario_b_skalabilitas_worker" type="button">
+                  <span data-icon="download"></span> Unduh PNG
+                </button>
+              </div>
               <div class="chart-wrap min-h-[340px]"><canvas id="chart-b"></canvas></div>
             </div>
             <div id="plot-wrap-c" hidden>
               <div class="grid gap-3 sm:grid-cols-2">
-                <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-speedup"></canvas></div>
-                <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-eff"></canvas></div>
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="caption-small font-semibold text-text-muted">Speedup per Filter</span>
+                    <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-c-speedup" data-name="skenario_c_speedup" type="button">
+                      <span data-icon="download"></span> Unduh PNG
+                    </button>
+                  </div>
+                  <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-speedup"></canvas></div>
+                </div>
+                <div class="space-y-1">
+                  <div class="flex items-center justify-between">
+                    <span class="caption-small font-semibold text-text-muted">Efisiensi Paralel per Filter (%)</span>
+                    <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-c-eff" data-name="skenario_c_efisiensi" type="button">
+                      <span data-icon="download"></span> Unduh PNG
+                    </button>
+                  </div>
+                  <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-eff"></canvas></div>
+                </div>
               </div>
             </div>
           </div>
