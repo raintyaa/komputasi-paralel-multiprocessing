@@ -37,6 +37,18 @@ def generate_all_test_images(output_dir: str = "data/input") -> dict[int, str]:
         dict {512: "path/to/512.png", 1024: ..., 2048: ..., 4096: ...}
     """
     pass
+
+def prepare_reference_multires_images(
+    master_path: str = "data/dataset_30/4096/img_01.png",
+    output_dir: str = "data/input",
+    target_resolutions: list[int] = None
+) -> dict[int, str]:
+    """
+    Menyiapkan citra acuan master fotografi 4K tunggal multiresolusi
+    (512, 1024, 2048, 4096) menggunakan teknik center-crop murni (tanpa interpolasi)
+    untuk pengujian empiris 30 repetisi standar Central Limit Theorem (CLT).
+    """
+    pass
 ```
 
 ### B. Kontrak Berkas `src/visualizer.py`:

@@ -53,7 +53,7 @@ flowchart TD
 ```text
 UTS/
 ├── data/
-│   ├── dataset_30/                # Dataset 30 citra fotografi nyata (512 s.d. 4096 px)
+│   ├── dataset_30/                # Citra acuan master 4K (img_01.png) & dataset multiresolusi legasi
 │   ├── input/                     # Citra masukan standar (512x512, 1024x1024, 2048x2048, 4096x4096)
 │   └── output/                    # Citra hasil filter (Grayscale, Blur, Sobel)
 ├── src/

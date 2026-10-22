@@ -32,6 +32,7 @@ Berbeda dengan simulator komputasi teoretis abstrak, **Parallel Vision Workbench
 - **Kejujuran Data Ilmiah**: Dilarang menggunakan metrik palsu (seperti cpu_utilization = 0.0). Seluruh data yang diekspor ke CSV berasal dari pengukuran empiris riil (`CPUMonitor`).
 - **Efisiensi Memori (Zero OOM)**: Pemuatan dataset citra multiresolusi (512px hingga 4096px) dikelola secara berurutan (*streaming per resolution*) agar tidak membebani RAM 16 GB secara serentak.
 - **Lifecycle Visualisasi**: Rendering grafik menggunakan Chart.js berbasis canvas client-side dengan kurva spline halus (`tension: 0.4`) dan isian gradasi pudar (*area fill*), serta pembersihan memori canvas eksplisit saat pergantian skenario.
+- **Ekspor Visualisasi Ilmiah**: Mendukung unduhan canvas Chart.js PNG berlatar putih solid anti-transparan, serta pembuatan dan pengemasan plot Matplotlib 300 DPI (Skenario A, B, C) dan bundel ZIP (/api/benchmark/plots/bundle/zip) untuk kebutuhan laporan akademik.
 
 ## Brand Commitments
 
@@ -48,6 +49,7 @@ Berbeda dengan simulator komputasi teoretis abstrak, **Parallel Vision Workbench
 - 2 Mode Pengujian: *Guided Stepper* (pengujian bertahap runtut A $\rightarrow$ B $\rightarrow$ C akumulatif) dan *Full Batch Run* (serentak).
 - Berkas riwayat pengujian empiris: `results/benchmark_results_latest.csv` dan `results/benchmark_results_summary.csv`.
 - Grafik saintifik publikasi 300 DPI: `results/plots/skenario_a_resolusi.png`, `results/plots/skenario_b_amdahl.png`, dan `results/plots/skenario_c_kompleksitas.png`.
+- Fitur ekspor grafik publikasi 300 DPI (Matplotlib) tunggal & bundel ZIP (/api/benchmark/plots/bundle/zip) serta unduhan canvas PNG Chart.js solid-white untuk laporan ilmiah.
 
 ## Product Principles
 

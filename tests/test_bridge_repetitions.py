@@ -10,6 +10,19 @@ from backend.services import bridge
 
 
 class TestBridgeRepetitions(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        # Backup CSV benchmark riil agar tidak tertimpa eksekusi unit test
+        cls.csv_backup = None
+        if bridge.BENCH_CSV_PATH.exists():
+            cls.csv_backup = bridge.BENCH_CSV_PATH.read_bytes()
+
+    @classmethod
+    def tearDownClass(cls):
+        # Restore CSV benchmark riil setelah pengujian selesai
+        if cls.csv_backup is not None:
+            bridge.BENCH_CSV_PATH.write_bytes(cls.csv_backup)
+
     def test_stream_benchmark_events_repetitions(self):
         # Run stream with basis="single_image", quick=True, repetitions=2
         events = list(bridge.stream_benchmark_events(

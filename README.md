@@ -16,7 +16,7 @@ Repositori proyek tugas akhir mata kuliah **Komputasi Paralel** (Semester 5, Pro
 ```text
 UTS/
 ├── data/
-│   ├── dataset_30/                # Dataset 30 citra fotografi nyata (512, 1024, 2048, 4096 px)
+│   ├── dataset_30/                # Citra acuan master 4K (img_01.png) & dataset multiresolusi legasi
 │   ├── input/                     # Citra masukan standar
 │   └── output/                    # Citra hasil filter (Grayscale, Blur, Sobel)
 ├── panduan_tugas_anggota/         # Panduan spesifikasi & prompt AI untuk tiap anggota
@@ -74,6 +74,10 @@ Dashboard dapat langsung diakses melalui peramban di:
 - **Jeda Pendinginan Termal (*Cool-down Buffer*)**: Jeda 2 detik otomatis antar-filter untuk menjaga suhu CPU dan clock speed tetap optimal.
 - Streaming benchmark Server-Sent Events (SSE) dengan pembatalan kooperatif (*graceful cancel*).
 - Verifikasi 100% bit-identik ($\Delta_{\max} = 0.000000$) dan visualisasi Chart.js spline + soft gradient fill.
+- **Ekspor Visualisasi Grafik Ilmiah**:
+  - Tombol unduh langsung gambar Chart.js (PNG dengan latar putih solid anti-transparan) siap disisipkan ke dokumen laporan.
+  - Tombol unduhan plot publikasi ilmiah beresolusi tinggi 300 DPI (Matplotlib) per skenario (/api/benchmark/plots/single/{scenario}).
+  - Tombol unduh paket bundel arsip ZIP 300 DPI (/api/benchmark/plots/bundle/zip) yang mengompilasi ketiga grafik publikasi secara otomatis.
 
 ### 3. Eksekusi Pengujian CLI Mandiri (Headless Benchmark)
 Jika ingin menjalankan pengujian benchmark otomatis melalui terminal tanpa antarmuka grafis:

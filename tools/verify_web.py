@@ -17,7 +17,11 @@ urls = [
     '/api/live/dataset/1024',
     '/api/benchmark/config',
     '/api/benchmark/results/latest',
-    '/api/benchmark/results/summary'
+    '/api/benchmark/results/summary',
+    '/api/benchmark/plots/single/A',
+    '/api/benchmark/plots/single/B',
+    '/api/benchmark/plots/single/C',
+    '/api/benchmark/plots/bundle/zip'
 ]
 
 for u in urls:

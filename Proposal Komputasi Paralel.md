@@ -199,8 +199,8 @@ Penelitian dilaksanakan dalam enam tahap sebagai berikut:
 
 1. Studi literatur, yaitu pengkajian teori komputasi paralel, mekanisme pengalamatan memori larik _NumPy_, arsitektur konkurensi modul Python _multiprocessing_, batasan _Global Interpreter Lock_ (GIL), serta formulasi matematis filter spasial citra (_Grayscale_, _Gaussian Blur_, dan _Sobel_).
 2. Perancangan dan pengkodean algoritma, yaitu pengembangan dua versi perangkat lunak pengujian: skrip serial sebagai _baseline_ dan skrip paralel yang memadukan fungsi partisi matriks horizontal dengan distribusi tugas melalui _multiprocessing.Pool()_.
-3. Penyiapan _dataset_ citra uji, yaitu pengumpulan dan standardisasi 30 sampel citra fotografi nyata beresolusi tinggi (4K hingga 8K) yang bersumber dari repositori fotografi terbuka (_Aesthetic-4K_). Setiap citra dipotong secara terpusat (_center-crop_) tanpa kompresi ke dalam empat tingkatan resolusi spasial: 512 × 512, 1024 × 1024, 2048 × 2048, dan 4096 × 4096 piksel, sehingga menghasilkan total 120 berkas citra multiresolusi untuk merepresentasikan keberagaman tekstur, gradien pencahayaan, dan entropi spasial alami.
-4. Eksekusi eksperimen terkontrol, yaitu pengujian algoritma pada sistem operasi tanpa aplikasi latar belakang yang membebani CPU. Setiap kombinasi perlakuan pengujian dieksekusi terhadap 30 sampel citra independen pada masing-masing tingkatan resolusi guna memperoleh data empiris yang representatif. Pengukuran durasi komputasi murni memanfaatkan arsitektur _pre-warmed pool_ untuk meniadakan penalti inisialisasi proses (_cold spawn_) pada Windows.
+3. Penyiapan _dataset_ citra uji, yaitu standardisasi citra acuan master fotografi beresolusi tinggi 4K (4096 × 4096 piksel) yang bersumber dari repositori fotografi terbuka (_Aesthetic-4K_). Citra acuan master tersebut dipotong secara terpusat (_center-crop_) tanpa kompresi ke dalam empat tingkatan resolusi spasial: 512 × 512, 1024 × 1024, 2048 × 2048, dan 4096 × 4096 piksel. Pendekatan citra acuan tunggal multiresolusi ini diterapkan guna meniadakan variabilitas struktur piksel antar-berkas, sehingga setiap perlakuan komputasi dievaluasi pada struktur matriks yang konsisten dan terkontrol. Seluruh 30 sampel citra multiresolusi awal tetap diarsipkan sebagai opsi dataset alternatif.
+4. Eksekusi eksperimen terkontrol, yaitu pengujian algoritma pada sistem operasi tanpa aplikasi latar belakang yang membebani CPU. Setiap kombinasi perlakuan pengujian dieksekusi sebanyak 30 kali repetisi terkontrol pada masing-masing tingkatan resolusi guna memenuhi kaidah _Central Limit Theorem_ (CLT) untuk memperoleh estimasi parameter rata-rata (_mean_) dan deviasi standar yang stabil dan representatif. Pengukuran durasi komputasi murni memanfaatkan arsitektur _pre-warmed pool_ untuk meniadakan penalti inisialisasi proses (_cold spawn_) pada Windows, serta dilengkapi jeda pendinginan termal CPU (_cool-down buffer_) antar-filter guna mencegah pelambatan termal (_thermal throttling_).
 5. Pencatatan parameter kinerja, yaitu pengukuran waktu komputasi murni dengan _time.perf_counter()_, pemantauan utilisasi inti prosesor dengan _psutil_, serta penghitungan _speedup_, efisiensi, dan _overhead_ paralel.
 6. Analisis skalabilitas dan penarikan kesimpulan, yaitu penyajian data dalam kurva komparatif, evaluasi kurva percepatan terhadap batas teoretis Hukum Amdahl, serta penarikan kesimpulan tentang efektivitas komputasi paralel pada berbagai ukuran data dan kompleksitas filter.
 
@@ -221,12 +221,12 @@ Alokasi proses kerja dikunci pada empat proses (_Pool(processes=4)_). Resolusi c
 
 Tabel 1. Matriks Pengujian Skenario A (Variasi Dimensi Citra)
 
-| Kode Uji | Resolusi Citra (Piksel) | Total Elemen Matriks | Jenis Operasi yang Diuji              | Alokasi Proses | Sampel Uji Citra |
+| Kode Uji | Resolusi Citra (Piksel) | Total Elemen Matriks | Jenis Operasi yang Diuji              | Alokasi Proses | Replikasi Pengujian               |
 | -------- | ----------------------- | -------------------- | ------------------------------------- | -------------- | ---------------- |
-| A1       | 512 × 512               | 262.144              | _Grayscale_, _Gaussian Blur_, _Sobel_ | 4 Proses       | 30 Berkas Nyata  |
-| A2       | 1024 × 1024             | 1.048.576            | _Grayscale_, _Gaussian Blur_, _Sobel_ | 4 Proses       | 30 Berkas Nyata  |
-| A3       | 2048 × 2048             | 4.194.304            | Grayscale, Gaussian Blur, Sobel       | 4 Proses       | 30 Berkas Nyata  |
-| A4       | 4096 × 4096             | 16.777.216           | Grayscale, Gaussian Blur, Sobel       | 4 Proses       | 30 Berkas Nyata  |
+| A1       | 512 × 512               | 262.144              | _Grayscale_, _Gaussian Blur_, _Sobel_ | 4 Proses       | 1 Citra Acuan Master (30x Repetisi) |
+| A2       | 1024 × 1024             | 1.048.576            | _Grayscale_, _Gaussian Blur_, _Sobel_ | 4 Proses       | 1 Citra Acuan Master (30x Repetisi) |
+| A3       | 2048 × 2048             | 4.194.304            | Grayscale, Gaussian Blur, Sobel       | 4 Proses       | 1 Citra Acuan Master (30x Repetisi) |
+| A4       | 4096 × 4096             | 16.777.216           | Grayscale, Gaussian Blur, Sobel       | 4 Proses       | 1 Citra Acuan Master (30x Repetisi) |
 
 ### Skenario B: Variasi Alokasi Proses Kerja
 
@@ -234,12 +234,12 @@ Dimensi citra dikunci pada 2048 × 2048 piksel. Alokasi proses kerja divariasika
 
 Tabel 2. Matriks Pengujian Skenario B
 
-| Kode Uji | Alokasi Proses Kerja | Mode Eksekusi                 | Jenis Operasi yang Diuji              | Dimensi Citra | Sampel Uji Citra |
+| Kode Uji | Alokasi Proses Kerja | Mode Eksekusi                 | Jenis Operasi yang Diuji              | Dimensi Citra | Replikasi Pengujian               |
 | -------- | -------------------- | ----------------------------- | ------------------------------------- | ------------- | ---------------- |
-| B0       | 1 Proses             | Mode Serial (_Baseline_)      | _Grayscale_, _Gaussian Blur_, _Sobel_ | 2048 × 2048   | 30 Berkas Nyata  |
-| B1       | 2 Proses             | Mode Paralel (_Dual-Process_) | _Grayscale_, _Gaussian Blur_, _Sobel_ | 2048 × 2048   | 30 Berkas Nyata  |
-| B2       | 4 Proses             | Mode Paralel (_Quad-Process_) | Grayscale, Gaussian Blur, Sobel       | 2048 × 2048   | 30 Berkas Nyata  |
-| B3       | 8 Proses             | Mode Paralel (_Octa-Process_) | Grayscale, Gaussian Blur, Sobel       | 2048 × 2048   | 30 Berkas Nyata  |
+| B0       | 1 Proses             | Mode Serial (_Baseline_)      | _Grayscale_, _Gaussian Blur_, _Sobel_ | 2048 × 2048   | 1 Citra Acuan Master (30x Repetisi) |
+| B1       | 2 Proses             | Mode Paralel (_Dual-Process_) | _Grayscale_, _Gaussian Blur_, _Sobel_ | 2048 × 2048   | 1 Citra Acuan Master (30x Repetisi) |
+| B2       | 4 Proses             | Mode Paralel (_Quad-Process_) | Grayscale, Gaussian Blur, Sobel       | 2048 × 2048   | 1 Citra Acuan Master (30x Repetisi) |
+| B3       | 8 Proses             | Mode Paralel (_Octa-Process_) | Grayscale, Gaussian Blur, Sobel       | 2048 × 2048   | 1 Citra Acuan Master (30x Repetisi) |
 
 ### Skenario C: Variasi Jenis Operasi Filter
 
@@ -255,7 +255,7 @@ Tabel 3. Klasifikasi Tingkat Kompleksitas Operasi Filter Citra
 
 ## Parameter Kinerja yang Diuji
 
-Efektivitas komputasi paralel dievaluasi melalui lima parameter kinerja pada Tabel 4. Waktu eksekusi yang dipakai untuk menghitung percepatan dan efisiensi diperoleh dari nilai rata-rata (_mean_, \mu) beserta standar deviasi (\sigma) dari pengujian 30 berkas citra independen pada masing-masing kombinasi perlakuan.
+Efektivitas komputasi paralel dievaluasi melalui lima parameter kinerja pada Tabel 4. Waktu eksekusi yang dipakai untuk menghitung percepatan dan efisiensi diperoleh dari nilai rata-rata (_mean_, \mu) beserta standar deviasi (\sigma) dari 30 kali repetisi pengujian terkontrol pada masing-masing kombinasi perlakuan.
 
 Tabel 4. Parameter Kinerja Pengujian Komputasi Paralel
 
