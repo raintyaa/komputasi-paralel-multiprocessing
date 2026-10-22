@@ -100,8 +100,8 @@
     }
   </script>
 
-  <link rel="stylesheet" href="/static/css/tokens.css" />
-  <link rel="stylesheet" href="/static/css/style.css" />
+  <link rel="stylesheet" href="/static/css/tokens.css?v=2.5.0" />
+  <link rel="stylesheet" href="/static/css/style.css?v=2.5.0" />
   <link
     rel="icon"
     href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpolygon points='13 2 3 14 12 14 11 22 21 10 12 10 13 2' fill='%231E40AF'/%3E%3C/svg%3E"
@@ -416,7 +416,7 @@
               </div>
             </div>
 
-            <div class="flex items-center justify-between rounded-card border border-border bg-surface-subtle/60 p-3">
+            <div class="flex items-center justify-between py-3 border-b border-border/60">
               <div>
                 <label class="check-item">
                   <input type="checkbox" id="bench-thermal-pause" checked />
@@ -428,11 +428,11 @@
             </div>
 
             <!-- Kontainer Mode Bertahap / Terpandu (Stepper) -->
-            <div id="bench-flow-stepper" class="space-y-3">
+            <div id="bench-flow-stepper" class="space-y-1">
               <div class="form-label text-xs uppercase tracking-wider text-text-muted">Tahapan Pengujian Terpandu (Runtut)</div>
 
               <!-- Step 1: Skenario A -->
-              <div class="stepper-card rounded-card border border-border p-3 bg-surface hover:border-primary/40 transition-all">
+              <div class="stepper-step border-b border-border/60 py-3 hover:bg-surface-subtle/30 transition-colors">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2.5">
                     <span class="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-primary text-xs font-bold font-mono">1</span>
@@ -451,7 +451,7 @@
               </div>
 
               <!-- Step 2: Skenario B -->
-              <div class="stepper-card rounded-card border border-border p-3 bg-surface hover:border-primary/40 transition-all opacity-85" id="card-step-b">
+              <div class="stepper-step border-b border-border/60 py-3 hover:bg-surface-subtle/30 transition-colors opacity-85" id="card-step-b">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2.5">
                     <span class="flex h-6 w-6 items-center justify-center rounded-full bg-text-muted/15 text-text-muted text-xs font-bold font-mono" id="num-step-b">2</span>
@@ -470,7 +470,7 @@
               </div>
 
               <!-- Step 3: Skenario C -->
-              <div class="stepper-card rounded-card border border-border p-3 bg-surface hover:border-primary/40 transition-all opacity-85" id="card-step-c">
+              <div class="stepper-step py-3 hover:bg-surface-subtle/30 transition-colors opacity-85" id="card-step-c">
                 <div class="flex items-center justify-between">
                   <div class="flex items-center gap-2.5">
                     <span class="flex h-6 w-6 items-center justify-center rounded-full bg-text-muted/15 text-text-muted text-xs font-bold font-mono" id="num-step-c">3</span>
@@ -620,7 +620,7 @@
             <span class="badge-capsule">Batas Teoretis</span>
           </div>
           <div class="card-body space-y-4">
-            <p class="caption-small formula-card">
+            <p class="caption-small formula-box">
               Rumus: <b class="text-text-main">S(P) = 1 / ((1 &minus; f) + f / P)</b>
               &nbsp;|&nbsp; Batas: <b class="text-text-main">S<sub>maks</sub> = 1 / (1 &minus; f)</b>
             </p>
@@ -635,12 +635,12 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3">
-              <div class="metric-card">
+              <div class="telemetry-box">
                 <div class="metric-label">Asimtot Speedup Maksimal</div>
                 <div class="metric-value" id="amdahl-asym">-</div>
                 <div class="metric-sub">Batas Teoretis P &rarr; &infin;</div>
               </div>
-              <div class="metric-card">
+              <div class="telemetry-box">
                 <div class="metric-label">Overhead Serial (1 &minus; f)</div>
                 <div class="metric-value" id="amdahl-serial">-</div>
                 <div class="metric-sub">Porsi tak dapat diparalelkan</div>
@@ -650,7 +650,7 @@
             <div class="flex items-center justify-between pt-1">
               <span class="caption-small font-semibold text-text-muted">Kurva Karakteristik Amdahl vs Empiris</span>
               <button class="btn btn-secondary text-xs py-1 px-2.5" id="btn-dl-amdahl-png" type="button" title="Unduh grafik simulasi Amdahl dalam format PNG">
-                <span data-icon="download"></span> Unduh PNG
+                <span data-icon="download"></span> Unduh Plot Amdahl
               </button>
             </div>
             <div class="chart-wrap min-h-[340px]"><canvas id="amdahl-chart"></canvas></div>
@@ -700,7 +700,7 @@
                 <div class="flex items-center justify-between">
                   <span class="caption-small font-semibold text-text-muted">Waktu Eksekusi Serial (Ts) vs Paralel (Tp)</span>
                   <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-a-time" data-name="skenario_a_waktu_eksekusi" type="button">
-                    <span data-icon="download"></span> Unduh PNG
+                    <span data-icon="download"></span> Unduh Kurva Waktu
                   </button>
                 </div>
                 <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-time"></canvas></div>
@@ -709,7 +709,7 @@
                 <div class="flex items-center justify-between">
                   <span class="caption-small font-semibold text-text-muted">Grafik Speedup vs Resolusi Citra</span>
                   <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-a-speedup" data-name="skenario_a_speedup" type="button">
-                    <span data-icon="download"></span> Unduh PNG
+                    <span data-icon="download"></span> Unduh Kurva Speedup
                   </button>
                 </div>
                 <div class="chart-wrap min-h-[260px]"><canvas id="chart-a-speedup"></canvas></div>
@@ -719,7 +719,7 @@
               <div class="flex items-center justify-between">
                 <span class="caption-small font-semibold text-text-muted">Kurva Skalabilitas Worker (P=1..8) vs Batas Teoretis Amdahl</span>
                 <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-b" data-name="skenario_b_skalabilitas_worker" type="button">
-                  <span data-icon="download"></span> Unduh PNG
+                  <span data-icon="download"></span> Unduh Skalabilitas Worker
                 </button>
               </div>
               <div class="chart-wrap min-h-[340px]"><canvas id="chart-b"></canvas></div>
@@ -730,7 +730,7 @@
                   <div class="flex items-center justify-between">
                     <span class="caption-small font-semibold text-text-muted">Speedup per Filter</span>
                     <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-c-speedup" data-name="skenario_c_speedup" type="button">
-                      <span data-icon="download"></span> Unduh PNG
+                      <span data-icon="download"></span> Unduh Bar Speedup
                     </button>
                   </div>
                   <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-speedup"></canvas></div>
@@ -739,7 +739,7 @@
                   <div class="flex items-center justify-between">
                     <span class="caption-small font-semibold text-text-muted">Efisiensi Paralel per Filter (%)</span>
                     <button class="btn btn-secondary text-[11px] py-1 px-2 btn-dl-canvas" data-canvas="chart-c-eff" data-name="skenario_c_efisiensi" type="button">
-                      <span data-icon="download"></span> Unduh PNG
+                      <span data-icon="download"></span> Unduh Bar Efisiensi
                     </button>
                   </div>
                   <div class="chart-wrap min-h-[260px]"><canvas id="chart-c-eff"></canvas></div>
@@ -888,11 +888,11 @@
   </div>
 
   <!-- ================= SCRIPTS ================= -->
-  <script src="/static/js/icons.js" defer></script>
-  <script src="/static/assets/vendor/chart.umd.min.js" defer></script>
-  <script src="/static/js/app.js" defer></script>
-  <script src="/static/js/live.js" defer></script>
-  <script src="/static/js/benchmark.js" defer></script>
-  <script src="/static/js/charts.js" defer></script>
+  <script src="/static/js/icons.js?v=2.5.0" defer></script>
+  <script src="/static/assets/vendor/chart.umd.min.js?v=2.5.0" defer></script>
+  <script src="/static/js/app.js?v=2.5.0" defer></script>
+  <script src="/static/js/live.js?v=2.5.0" defer></script>
+  <script src="/static/js/benchmark.js?v=2.5.0" defer></script>
+  <script src="/static/js/charts.js?v=2.5.0" defer></script>
 </body>
 </html>

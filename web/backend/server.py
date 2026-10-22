@@ -74,6 +74,17 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
+@app.middleware("http")
+async def add_anti_cache_headers(request, call_next):
+    """Mencegah browser meng-cache berkas statis (CSS/JS) selama iterasi pengembangan."""
+    response = await call_next(request)
+    if request.url.path == "/" or request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # ---------------------------------------------------------------------------
 # Static assets & template shell
 # ---------------------------------------------------------------------------
