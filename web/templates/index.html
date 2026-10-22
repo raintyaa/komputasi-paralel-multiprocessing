@@ -268,12 +268,12 @@
               <p class="caption-small" id="live-warm-note"></p>
             </div>
 
-            <div class="rounded-card border border-border bg-surface-subtle/60 p-3 shadow-bento">
-              <label class="check-item">
+            <div class="rounded-xl border border-border/80 bg-surface-subtle/50 p-3.5">
+              <label class="check-item cursor-pointer">
                 <input type="checkbox" id="live-warm-pool" checked />
-                <span><b class="font-semibold text-text-main">Persistent Pre-Warmed Pool</b> (rekomendasi Windows)</span>
+                <span><b class="font-semibold text-text-main">Persistent Pre-Warmed Pool</b> <span class="text-text-secondary">(rekomendasi Windows)</span></span>
               </label>
-              <p class="caption-small mt-1">
+              <p class="caption-small mt-1 text-text-secondary leading-relaxed">
                 Menghindari penalti cold-spawn prosesor baru di Windows (multiprocessing
                 berbasis metode spawn, bukan fork).
               </p>
@@ -302,22 +302,22 @@
             <div class="metadata-strip" id="live-meta-strip" hidden></div>
 
             <div class="grid grid-cols-2 gap-3 xl:grid-cols-4" id="live-metrics" hidden>
-              <div class="metric-card">
+              <div class="telemetry-box">
                 <div class="metric-label">Waktu Serial (Ts)</div>
                 <div class="metric-value" id="live-m-tserial">0.0000s</div>
                 <div class="metric-sub">Single-Core Baseline</div>
               </div>
-              <div class="metric-card">
+              <div class="telemetry-box">
                 <div class="metric-label">Waktu Paralel (Tp)</div>
                 <div class="metric-value" id="live-m-tparallel">0.0000s</div>
                 <div class="metric-sub" id="live-m-parallel-sub">P = 4 Worker Proses</div>
               </div>
-              <div class="metric-card metric-card-success">
+              <div class="telemetry-box telemetry-box-success">
                 <div class="metric-label">Speedup (S)</div>
                 <div class="metric-value" id="live-m-speedup">0.00x</div>
                 <div class="metric-sub">Percepatan Komputasi</div>
               </div>
-              <div class="metric-card">
+              <div class="telemetry-box">
                 <div class="metric-label">Efisiensi (E)</div>
                 <div class="metric-value" id="live-m-efficiency">0.0%</div>
                 <div class="metric-sub">Util CPU <span class="mono-sm" id="live-m-cpu">-</span></div>
