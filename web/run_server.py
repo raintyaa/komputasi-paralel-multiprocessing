@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 """
 run_server.py
 =============
