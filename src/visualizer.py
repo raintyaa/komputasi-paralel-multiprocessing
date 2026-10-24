@@ -203,10 +203,19 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
 
         # Cocokkan nilai dengan target resolusi (gunakan rata-rata jika multi-citra)
         y_vals = []
+        y_errs = []
         for r in target_resolutions:
             val_match = f_data[f_data["resolution"] == r]["speedup"]
-            val_mean = float(val_match.mean()) if not val_match.empty else np.nan
+            if not val_match.empty:
+                val_mean = float(val_match.mean())
+                n_samp = len(val_match)
+                val_std = float(val_match.std()) if n_samp > 1 else 0.0
+                ci95 = 1.96 * val_std / np.sqrt(n_samp) if n_samp > 1 else 0.0
+            else:
+                val_mean = np.nan
+                ci95 = 0.0
             y_vals.append(val_mean)
+            y_errs.append(ci95)
             res_speedups[r][f_name] = val_mean
 
         style = FILTER_STYLES.get(f_name, {
@@ -218,9 +227,10 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
             "markersize": 6,
         })
 
-        ax.plot(
+        ax.errorbar(
             x_indices,
             y_vals,
+            yerr=y_errs,
             label=style["label"],
             color=style["color"],
             marker=style["marker"],
@@ -229,6 +239,9 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
             markersize=style["markersize"],
             markeredgecolor="white",
             markeredgewidth=1.2,
+            capsize=3.5,
+            capthick=1.2,
+            elinewidth=1.2,
         )
 
     # Anotasi nilai Speedup dengan smart offset agar teks tidak bertubrukan
@@ -292,9 +305,9 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
     # Batas sumbu Y proporsional dan bersih
     ax.set_ylim(bottom=0.5, top=5.2)
 
-    # Legend diposisikan di sudut kiri atas (upper left) dengan latar putih agar tidak menutupi kurva data
+    # Legend diposisikan di sudut kanan atas (upper right) agar tidak menutupi titik 512px
     ax.legend(
-        loc="upper left",
+        loc="upper right",
         framealpha=0.95,
         facecolor="#FFFFFF",
         edgecolor="#CBD5E1",
@@ -314,7 +327,7 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
 # ==============================================================================
 def plot_scenario_b(
     csv_path: str,
-    f_fraction: float = 0.90,
+    f_fraction: Optional[float] = None,
     output_path: str = "results/plots/skenario_b_amdahl.png"
 ):
     """
@@ -333,12 +346,11 @@ def plot_scenario_b(
     apply_scientific_plot_style()
     df = _load_and_normalize_dataset(csv_path)
 
-    # Filter data: Resolusi 2048 pada proses P in [1, 2, 4, 8]
-    mask = (df["resolution"] == 2048) & (df["p"].isin([1, 2, 4, 8]))
+    # Filter data: Isolasi ketat Skenario B agar P=4 tidak terkontaminasi Skenario A3 / C
     if "scenario" in df.columns and (df["scenario"].astype(str).str.upper() == "B").any():
-        mask = mask | (df["scenario"].astype(str).str.upper() == "B")
-
-    sub_df = df[mask].copy()
+        sub_df = df[df["scenario"].astype(str).str.upper() == "B"].copy()
+    else:
+        sub_df = df[(df["resolution"] == 2048) & (df["p"].isin([1, 2, 4, 8]))].copy()
 
     if sub_df.empty:
         raise ValueError("Data untuk Skenario B (Resolusi=2048, P=1,2,4,8) tidak ditemukan di CSV.")
@@ -360,20 +372,48 @@ def plot_scenario_b(
         alpha=0.85
     )
 
-    # 2. Garis Batas Teoretis Hukum Amdahl
+    # 2. Estimasi Fraksi Paralel (f) Secara Empiris & Batas Teoretis Amdahl
+    if f_fraction is None or f_fraction <= 0.0 or f_fraction >= 1.0:
+        # Fit f dari mean speedup empiris pada P=2, 4, 8 via least-squares
+        p_fit = []
+        s_fit = []
+        for p in [2, 4, 8]:
+            match = sub_df[sub_df["p"] == p]["speedup"]
+            if not match.empty:
+                p_fit.append(p)
+                s_fit.append(float(match.mean()))
+        if len(p_fit) >= 2:
+            p_arr = np.array(p_fit)
+            s_arr = np.array(s_fit)
+            f_candidates = np.linspace(0.05, 0.95, 181)
+            best_f = 0.80
+            min_err = float("inf")
+            for f_cand in f_candidates:
+                s_pred = 1.0 / ((1.0 - f_cand) + (f_cand / p_arr))
+                err = np.sum((s_arr - s_pred) ** 2)
+                if err < min_err:
+                    min_err = err
+                    best_f = f_cand
+            f_used = round(best_f, 2)
+        else:
+            f_used = 0.80
+    else:
+        f_used = f_fraction
+    f_fraction = f_used
+
     # S_Amdahl = 1.0 / ((1.0 - f) + (f / P))
-    s_amdahl_curve = 1.0 / ((1.0 - f_fraction) + (f_fraction / p_continuous))
+    s_amdahl_curve = 1.0 / ((1.0 - f_used) + (f_used / p_continuous))
     ax.plot(
         p_continuous,
         s_amdahl_curve,
         color="#7b1fa2",          # Ungu elegan
         linestyle="--",
         linewidth=2.0,
-        label=f"Batas Teoretis Amdahl ($f = {f_fraction:.2f}$)",
+        label=f"Batas Teoretis Amdahl ($f = {f_used:.2f}$)",
         alpha=0.9
     )
 
-    # 3. Plot Kurva Speedup Empiris Masing-Masing Filter
+    # 3. Plot Kurva Speedup Empiris Masing-Masing Filter dengan 95% CI Error Bar
     for f_name in target_filters:
         f_data = sub_df[sub_df["filter"] == f_name].sort_values("p")
         if f_data.empty:
@@ -381,11 +421,17 @@ def plot_scenario_b(
 
         p_vals = []
         speedup_vals = []
+        speedup_errs = []
         for p in target_p:
             match = f_data[f_data["p"] == p]["speedup"]
             if not match.empty:
+                val_mean = float(match.mean())
+                n_samp = len(match)
+                val_std = float(match.std()) if n_samp > 1 else 0.0
+                ci95 = 1.96 * val_std / np.sqrt(n_samp) if n_samp > 1 else 0.0
                 p_vals.append(p)
-                speedup_vals.append(float(match.mean()))
+                speedup_vals.append(val_mean)
+                speedup_errs.append(ci95)
 
         style = FILTER_STYLES.get(f_name, {
             "label": f_name,
@@ -396,9 +442,10 @@ def plot_scenario_b(
             "markersize": 7,
         })
 
-        ax.plot(
+        ax.errorbar(
             p_vals,
             speedup_vals,
+            yerr=speedup_errs,
             label=f"Empiris: {style['label']}",
             color=style["color"],
             marker=style["marker"],
@@ -407,17 +454,32 @@ def plot_scenario_b(
             markersize=style["markersize"],
             markeredgecolor="white",
             markeredgewidth=1.2,
+            capsize=3.5,
+            capthick=1.2,
+            elinewidth=1.2,
         )
 
-        # Anotasi nilai numerik empiris
+        # Anotasi nilai numerik empiris dengan offset cerdas agar tidak bertumpukan di P=4
         for px, sx in zip(p_vals, speedup_vals):
+            y_off = 6
+            v_align = "bottom"
+            if px == 4:
+                if f_name == "Gaussian Blur":
+                    y_off = -14
+                    v_align = "top"
+                elif f_name == "Sobel":
+                    y_off = 7
+                    v_align = "bottom"
+                elif f_name == "Grayscale":
+                    y_off = 7
+                    v_align = "bottom"
             ax.annotate(
                 f"{sx:.2f}x",
                 xy=(px, sx),
-                xytext=(0, 6),
+                xytext=(0, y_off),
                 textcoords="offset points",
                 ha="center",
-                va="bottom",
+                va=v_align,
                 fontsize=8.5,
                 fontweight="bold",
                 color=style["color"]
@@ -481,19 +543,29 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
     categories = ["Grayscale\n(Ringan)", "Gaussian Blur\n(Moderat)", "Sobel\n(Berat)"]
 
     overheads: List[float] = []
+    overhead_errs: List[float] = []
     cpu_utils: List[float] = []
+    cpu_errs: List[float] = []
 
     for f_name in target_filters:
         f_row = sub_df[sub_df["filter"] == f_name]
         if not f_row.empty:
-            # Ambil rata-rata jika terdapat beberapa baris
             oh = float(f_row["overhead"].mean()) if "overhead" in f_row.columns else 0.0
+            n_oh = len(f_row["overhead"]) if "overhead" in f_row.columns else 1
+            oh_std = float(f_row["overhead"].std()) if n_oh > 1 else 0.0
+            oh_ci = 1.96 * oh_std / np.sqrt(n_oh) if n_oh > 1 else 0.0
+
             cpu = float(f_row["cpu_utilization"].mean()) if "cpu_utilization" in f_row.columns else 0.0
+            n_cpu = len(f_row["cpu_utilization"]) if "cpu_utilization" in f_row.columns else 1
+            cpu_std = float(f_row["cpu_utilization"].std()) if n_cpu > 1 else 0.0
+            cpu_ci = 1.96 * cpu_std / np.sqrt(n_cpu) if n_cpu > 1 else 0.0
         else:
-            oh = 0.0
-            cpu = 0.0
+            oh, oh_ci = 0.0, 0.0
+            cpu, cpu_ci = 0.0, 0.0
         overheads.append(oh)
+        overhead_errs.append(oh_ci)
         cpu_utils.append(cpu)
+        cpu_errs.append(cpu_ci)
 
     fig, ax1 = plt.subplots(figsize=(8.5, 5.5))
     ax2 = ax1.twinx()  # Sumbu Y kedua untuk persentase CPU (%)
@@ -505,10 +577,13 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
     color_overhead = "#d95f02"   # Oranye gelap/tembaga untuk overhead
     color_cpu = "#1b9e77"        # Hijau toska untuk utilisasi CPU
 
-    # Batang 1 (Kiri): Overhead (detik) pada ax1
+    # Batang 1 (Kiri): Overhead (detik) pada ax1 dengan 95% CI Error Bar
     rects1 = ax1.bar(
         x_pos - (bar_width / 2),
         overheads,
+        yerr=overhead_errs,
+        capsize=3.5,
+        error_kw={"elinewidth": 1.2, "capthick": 1.2, "ecolor": "#555555"},
         width=bar_width,
         color=color_overhead,
         label="Durasi Overhead (detik)",
@@ -517,10 +592,13 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
         alpha=0.88
     )
 
-    # Batang 2 (Kanan): Utilisasi CPU (%) pada ax2
+    # Batang 2 (Kanan): Utilisasi CPU (%) pada ax2 dengan 95% CI Error Bar
     rects2 = ax2.bar(
         x_pos + (bar_width / 2),
         cpu_utils,
+        yerr=cpu_errs,
+        capsize=3.5,
+        error_kw={"elinewidth": 1.2, "capthick": 1.2, "ecolor": "#555555"},
         width=bar_width,
         color=color_cpu,
         label="Utilisasi CPU (%)",

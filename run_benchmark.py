@@ -115,13 +115,11 @@ def run_single_experiment(
     image: np.ndarray,
     filter_info: dict,
     p_workers: int,
-    t_serial_cached: float = None,
-    res_serial_cached: np.ndarray = None,
     existing_pool: multiprocessing.Pool = None
 ) -> dict:
     """
     Menjalankan 1 perlakuan pengujian eksperimen terkontrol:
-    1. Mengukur Serial Baseline (jika belum ada di cache)
+    1. Mengukur Serial Baseline secara segar per iterasi (interleaved measurement)
     2. Menjalankan Paralel dengan pemantauan CPU latar belakang (mendukung pre-warmed pool)
     3. Memvalidasi keidentikan bit-per-bit hasil
     4. Menghitung metrik performa (Speedup, Efisiensi, Overhead)
@@ -129,24 +127,24 @@ def run_single_experiment(
     filter_func = filter_info["func"]
     k_radius = filter_info["k_radius"]
 
-    # 1. Serial Baseline Execution
-    if t_serial_cached is not None and res_serial_cached is not None:
-        t_serial = t_serial_cached
-        res_serial = res_serial_cached
-    else:
-        res_serial, t_serial = run_serial(image, filter_func)
+    # 1. Serial Baseline Execution (Segar per iterasi untuk variansi riil)
+    res_serial, t_serial = run_serial(image, filter_func)
 
     # 2. Parallel Execution dengan Pemantauan CPU
     monitor = CPUMonitor(interval=0.02)
     monitor.start()
 
-    res_parallel, t_parallel = run_parallel(
-        image,
-        filter_func,
-        p_processes=p_workers,
-        kernel_radius=k_radius,
-        existing_pool=existing_pool
-    )
+    if p_workers == 1:
+        # B0: Mode Serial (Baseline) - run kedua independen
+        res_parallel, t_parallel = run_serial(image, filter_func)
+    else:
+        res_parallel, t_parallel = run_parallel(
+            image,
+            filter_func,
+            p_processes=p_workers,
+            kernel_radius=k_radius,
+            existing_pool=existing_pool
+        )
 
     cpu_stats = monitor.stop()
 
@@ -202,7 +200,6 @@ def execute_full_benchmark(
     base_res_b = 1024 if quick_mode else 2048
 
     records = []
-    serial_cache = {}
 
     # Inisialisasi Pre-warmed Pools untuk Windows (P = 2, 4, 8)
     pools = {p: multiprocessing.Pool(processes=p) for p in [2, 4, 8]}
@@ -231,20 +228,12 @@ def execute_full_benchmark(
             img_rgb = load_image_rgb(img_path)
 
             for it in range(1, reps + 1):
-                cache_key = (f_name, res, img_name)
-                cached = serial_cache.get(cache_key, (None, None))
-
                 res_data = run_single_experiment(
                     image=img_rgb,
                     filter_info=f_info,
                     p_workers=4,
-                    t_serial_cached=cached[0],
-                    res_serial_cached=cached[1],
                     existing_pool=pool_4
                 )
-
-                if cache_key not in serial_cache:
-                    serial_cache[cache_key] = (res_data["t_serial_base"], res_data["res_serial"])
 
                 records.append({
                     "scenario": "A",
@@ -286,20 +275,12 @@ def execute_full_benchmark(
             print(f"    -> Filter {f_name:<14} (P={p}): [", end="", flush=True)
 
             for it in range(1, reps + 1):
-                cache_key = (f_name, base_res_b, img_name_b)
-                cached = serial_cache.get(cache_key, (None, None))
-
                 res_data = run_single_experiment(
                     image=img_rgb_b,
                     filter_info=f_info,
                     p_workers=p,
-                    t_serial_cached=cached[0],
-                    res_serial_cached=cached[1],
                     existing_pool=pool_p
                 )
-
-                if cache_key not in serial_cache:
-                    serial_cache[cache_key] = (res_data["t_serial_base"], res_data["res_serial"])
 
                 records.append({
                     "scenario": "B",
@@ -389,7 +370,7 @@ def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_re
     )
     plot_scenario_b(
         csv_path=raw_csv,
-        f_fraction=0.92,
+        f_fraction=None,
         output_path=os.path.join(plots_dir, "skenario_b_amdahl.png")
     )
     plot_scenario_c(

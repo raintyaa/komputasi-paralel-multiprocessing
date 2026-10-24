@@ -566,7 +566,6 @@ def stream_benchmark_events(
 
     pools: Dict[int, multiprocessing.Pool] = {}
     new_records: List[Dict[str, Any]] = []
-    serial_cache: Dict[Tuple[str, int, str], Tuple[float, np.ndarray]] = {}
     # Streaming citra: hanya 1 citra aktif di RAM pada satu waktu (Zero-OOM)
     current_img: Optional[np.ndarray] = None
     current_key: Optional[Tuple[int, str]] = None
@@ -616,23 +615,18 @@ def stream_benchmark_events(
                 current_img = _load_target_image(res, img_path)
                 current_key = img_key
 
-            cache_key = (f_cfg["name"], res, img_name)
-            cached_s = serial_cache.get(cache_key, (None, None))
-
             func = f_cfg["func"]
             k_rad = f_cfg["k_radius"]
 
-            # Serial (atau ambil cache)
-            if cached_s[0] is not None:
-                t_serial, res_serial = cached_s
-            else:
-                res_serial, t_serial = run_serial(current_img, func)
+            # 1. Serial Run (diukur segar per iterasi untuk baseline independen & akurat)
+            res_serial, t_serial = run_serial(current_img, func)
 
-            # Paralel + CPU Monitor
+            # 2. Paralel Run + Pemantauan CPU
             monitor = CPUMonitor(interval=0.02)
             monitor.start()
             if p == 1:
-                t_parallel, res_parallel = t_serial, res_serial
+                # Skenario B0 (1 Proses): run serial kedua independen agar variansi terukur nyata
+                res_parallel, t_parallel = run_serial(current_img, func)
             else:
                 res_parallel, t_parallel = run_parallel(
                     image=current_img,
@@ -648,8 +642,6 @@ def stream_benchmark_events(
 
             is_identical, max_diff = validate_results(res_serial, res_parallel)
             metrics = calculate_metrics(t_serial, t_parallel, p_processes=p)
-            if cache_key not in serial_cache:
-                serial_cache[cache_key] = (t_serial, res_serial)
 
             record = {
                 "timestamp": now_str,
