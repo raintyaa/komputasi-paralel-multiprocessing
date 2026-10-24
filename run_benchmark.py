@@ -342,16 +342,19 @@ def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_re
     df.to_csv(latest_csv, index=False)
     print(f"\n[+] Raw Data ({len(df)} baris) berhasil disimpan ke:\n    -> {os.path.abspath(raw_csv)}\n    -> {os.path.abspath(latest_csv)}")
 
-    # 2. Simpan Ringkasan Statistik Empiris Lengkap (Mean, Std, Median, Q25, Q75, CI 95%)
+    # 2. Simpan Ringkasan Statistik Empiris Lengkap (t-Student, Median, Q25, Q75, 6 Desimal, A/A Control)
     records_sum = []
     grouped = df.groupby(["scenario", "filter", "resolution", "p"])
+    T_CRIT_MAP = {30: 2.04523, 29: 2.04841, 15: 2.14479, 10: 2.26216, 3: 4.30265}
     for (scen, filt, res, p), group in grouped:
         n = len(group)
+        t_crit = T_CRIT_MAP.get(n, 2.04523 if n >= 30 else 2.0)
         rec = {
             "scenario": scen,
             "filter": filt,
             "resolution": res,
             "p": p,
+            "is_control_aa": bool(p == 1),
             "sampel_count": n,
             "is_identical_all": bool(group["is_identical"].all()) if "is_identical" in group.columns else True,
         }
@@ -364,14 +367,14 @@ def save_and_visualize(df: pd.DataFrame, output_csv: str = "results/benchmark_re
             med_val = float(s.median())
             q25_val = float(s.quantile(0.25))
             q75_val = float(s.quantile(0.75))
-            margin = 1.96 * std_val / np.sqrt(n) if n > 1 else 0.0
-            rec[f"{col}_mean"] = round(mean_val, 4)
-            rec[f"{col}_std"] = round(std_val, 4)
-            rec[f"{col}_median"] = round(med_val, 4)
-            rec[f"{col}_q25"] = round(q25_val, 4)
-            rec[f"{col}_q75"] = round(q75_val, 4)
-            rec[f"{col}_ci95_low"] = round(float(mean_val - margin), 4)
-            rec[f"{col}_ci95_high"] = round(float(mean_val + margin), 4)
+            margin = t_crit * std_val / np.sqrt(n) if n > 1 else 0.0
+            rec[f"{col}_median"] = round(med_val, 6)
+            rec[f"{col}_q25"] = round(q25_val, 6)
+            rec[f"{col}_q75"] = round(q75_val, 6)
+            rec[f"{col}_mean"] = round(mean_val, 6)
+            rec[f"{col}_std"] = round(std_val, 6)
+            rec[f"{col}_ci95_low"] = round(float(mean_val - margin), 6)
+            rec[f"{col}_ci95_high"] = round(float(mean_val + margin), 6)
         records_sum.append(rec)
     summary_df = pd.DataFrame(records_sum)
 

@@ -777,27 +777,30 @@ def load_results_csv() -> Optional[pd.DataFrame]:
 
 
 def aggregate_summary(df: pd.DataFrame) -> pd.DataFrame:
-    """Agregasi statistik lengkap per (scenario, filter, resolution, p) termasuk Median, Kuartil, dan 95% CI."""
+    """Agregasi statistik lengkap per (scenario, filter, resolution, p) berbasis t-Student (t_29=2.04523), median, kuartil, presisi 6 desimal, dan penanda kontrol A/A."""
     import numpy as np
     records = []
     grouped = df.groupby(["scenario", "filter", "resolution", "p"])
+    T_CRIT_MAP = {30: 2.04523, 29: 2.04841, 15: 2.14479, 10: 2.26216, 3: 4.30265}
     for (scen, filt, res, p), group in grouped:
         n = len(group)
+        t_crit = T_CRIT_MAP.get(n, 2.04523 if n >= 30 else 2.0)
         rec = {
             "scenario": scen,
             "filter": filt,
             "resolution": res,
             "p": p,
+            "is_control_aa": bool(p == 1),
             "Sampel": n,
             "Is_Identical_All": bool(group["is_identical"].all()) if "is_identical" in group.columns else True,
         }
         metric_cols = [
-            ("t_serial", "Ts"),
-            ("t_parallel", "Tp"),
+            ("t_serial", "Ts_detik"),
+            ("t_parallel", "Tp_detik"),
             ("speedup", "Speedup"),
-            ("efficiency", "Efisiensi"),
-            ("overhead", "Overhead"),
-            ("cpu_utilization", "CPU_Util"),
+            ("efficiency", "Efisiensi_persen"),
+            ("overhead", "Overhead_detik"),
+            ("cpu_utilization", "CPU_Util_persen"),
         ]
         for src_col, prefix in metric_cols:
             if src_col not in group.columns:
@@ -808,13 +811,13 @@ def aggregate_summary(df: pd.DataFrame) -> pd.DataFrame:
             med_val = float(s.median())
             q25_val = float(s.quantile(0.25))
             q75_val = float(s.quantile(0.75))
-            margin = 1.96 * std_val / np.sqrt(n) if n > 1 else 0.0
-            rec[f"{prefix}_Mean"] = round(mean_val, 4)
-            rec[f"{prefix}_Std"] = round(std_val, 4)
-            rec[f"{prefix}_Median"] = round(med_val, 4)
-            rec[f"{prefix}_Q25"] = round(q25_val, 4)
-            rec[f"{prefix}_Q75"] = round(q75_val, 4)
-            rec[f"{prefix}_CI95_Low"] = round(float(mean_val - margin), 4)
-            rec[f"{prefix}_CI95_High"] = round(float(mean_val + margin), 4)
+            margin = t_crit * std_val / np.sqrt(n) if n > 1 else 0.0
+            rec[f"{prefix}_Median"] = round(med_val, 6)
+            rec[f"{prefix}_Q25"] = round(q25_val, 6)
+            rec[f"{prefix}_Q75"] = round(q75_val, 6)
+            rec[f"{prefix}_Mean"] = round(mean_val, 6)
+            rec[f"{prefix}_Std"] = round(std_val, 6)
+            rec[f"{prefix}_CI95_Low"] = round(float(mean_val - margin), 6)
+            rec[f"{prefix}_CI95_High"] = round(float(mean_val + margin), 6)
         records.append(rec)
     return pd.DataFrame(records)

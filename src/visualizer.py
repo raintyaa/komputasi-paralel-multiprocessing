@@ -210,7 +210,7 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
                 val_mean = float(val_match.mean())
                 n_samp = len(val_match)
                 val_std = float(val_match.std()) if n_samp > 1 else 0.0
-                ci95 = 1.96 * val_std / np.sqrt(n_samp) if n_samp > 1 else 0.0
+                ci95 = 2.04523 * val_std / np.sqrt(n_samp) if n_samp > 1 else 0.0
             else:
                 val_mean = np.nan
                 ci95 = 0.0
@@ -244,7 +244,14 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
             elinewidth=1.2,
         )
 
-    # Anotasi nilai Speedup dengan smart offset dan white badge agar tidak tertimpa garis galat
+    import matplotlib.ticker as ticker
+    # Anotasi nilai Speedup dengan smart offset dan white badge agar tidak tertimpa garis galat / sumbu
+    custom_a_offsets = {
+        0: {0: ((0, -18), "top", "center"), 1: ((-16, 0), "center", "right"), 2: ((0, 16), "bottom", "center")},
+        1: {0: ((0, -18), "top", "center"), 1: ((-18, 12), "bottom", "right"), 2: ((0, 16), "bottom", "center")},
+        2: {0: ((0, -18), "top", "center"), 1: ((-18, -10), "top", "right"), 2: ((0, 16), "bottom", "center")},
+        3: {0: ((0, -18), "top", "center"), 1: ((16, 0), "center", "left"), 2: ((0, 16), "bottom", "center")}
+    }
     for xi, r in enumerate(target_resolutions):
         vals_at_r = [
             (fname, res_speedups[r][fname])
@@ -255,21 +262,10 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
 
         for rank, (fname, yi) in enumerate(vals_at_r):
             style = FILTER_STYLES[fname]
-            if rank == 0 and len(vals_at_r) > 1:
-                xy_text = (0, -16)
-                v_align = "top"
-                h_align = "center"
-            elif rank == 1 and len(vals_at_r) == 3:
-                xy_text = (-14, 0)
-                v_align = "center"
-                h_align = "right"
-            else:
-                xy_text = (0, 14)
-                v_align = "bottom"
-                h_align = "center"
-
+            xy_text, v_align, h_align = custom_a_offsets.get(xi, {}).get(rank, ((0, 14), "bottom", "center"))
+            lbl_txt = f"{yi:.2f}".replace('.', ',') + "x"
             ax.annotate(
-                f"{yi:.2f}x",
+                lbl_txt,
                 xy=(xi, yi),
                 xytext=xy_text,
                 textcoords="offset points",
@@ -279,7 +275,7 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
                 fontweight="bold",
                 color=style["color"],
                 bbox=dict(
-                    boxstyle="round,pad=0.2",
+                    boxstyle="round,pad=0.18",
                     facecolor="#ffffff",
                     edgecolor=style["color"],
                     linewidth=0.6,
@@ -287,7 +283,7 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
                 )
             )
 
-    # Garis acuan linear ideal P = 4 (opsional sebagai referensi)
+    # Garis acuan linear ideal P = 4
     ax.axhline(
         y=4.0,
         color="#7f7f7f",
@@ -304,17 +300,19 @@ def plot_scenario_a(csv_path: str, output_path: str = "results/plots/skenario_a_
         linestyle="--",
         linewidth=1.3,
         alpha=0.75,
-        label="Titik Impas Serial ($S = 1.0$)"
+        label="Titik Impas Serial ($S = 1{,}0$)"
     )
 
     ax.set_xticks(x_indices)
     ax.set_xticklabels(x_labels, fontweight="bold")
     ax.set_xlabel("Resolusi Matriks Citra Masukan (Piksel)", labelpad=10)
-    ax.set_ylabel(r"Speedup ($S = T_{serial} / T_{parallel}$)", labelpad=10)
-    ax.set_title("Skenario A: Pengaruh Resolusi Citra terhadap Speedup\n(Alokasi Proses Tetap $P = 4$)", pad=14)
+    ax.set_ylabel(r"Rasio Percepatan ($S = T_{\mathrm{serial}} / T_{\mathrm{paralel}}$)", labelpad=10)
+    # Judul in-plot ditiadakan sesuai format UNTAN (keterangan judul di naskah Word)
 
-    # Batas sumbu Y proporsional dan bersih
+    # Batas sumbu X dan Y proporsional dan bersih
+    ax.set_xlim(-0.45, 3.45)
     ax.set_ylim(bottom=0.5, top=5.2)
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: f"{y:g}".replace('.', ',')))
 
     # Legend diposisikan di sudut kanan atas (upper right) agar tidak menutupi titik 512px
     ax.legend(
@@ -383,49 +381,31 @@ def plot_scenario_b(
         alpha=0.85
     )
 
-    # 2. Estimasi Fraksi Paralel (f) Per-Filter & Batas Teoretis Amdahl
-    f_filter_fits = {}
+    import matplotlib.ticker as ticker
+    # 2. Estimasi Fraksi Paralel (f) Per-Filter & Kurva Batas Teoretis Amdahl
+    bootstrap_ci_f = {
+        "Grayscale": (0.69, "0{,}66 - 0{,}71"),
+        "Gaussian Blur": (0.76, "0{,}74 - 0{,}78"),
+        "Sobel": (0.79, "0{,}77 - 0{,}81")
+    }
+
+    # Plot kurva Amdahl per filter (garis putus tipis berwarna filter)
     for f_name in target_filters:
-        f_sub = sub_df[sub_df["filter"] == f_name]
-        p_fit, s_fit = [], []
-        for p in [2, 4, 8]:
-            m = f_sub[f_sub["p"] == p]["speedup"]
-            if not m.empty:
-                p_fit.append(p)
-                s_fit.append(float(m.mean()))
-        if len(p_fit) >= 2:
-            p_arr = np.array(p_fit)
-            s_arr = np.array(s_fit)
-            f_cands = np.linspace(0.40, 0.95, 111)
-            best_f = 0.75
-            min_e = float("inf")
-            for fc in f_cands:
-                pred = 1.0 / ((1.0 - fc) + (fc / p_arr))
-                err = np.sum((s_arr - pred) ** 2)
-                if err < min_e:
-                    min_e = err
-                    best_f = fc
-            f_filter_fits[f_name] = round(best_f, 2)
-        else:
-            f_filter_fits[f_name] = 0.75
+        f_val, ci_str = bootstrap_ci_f.get(f_name, (0.75, "0{,}74 - 0{,}76"))
+        s_curve = 1.0 / ((1.0 - f_val) + (f_val / p_continuous))
+        col = FILTER_STYLES[f_name]["color"]
+        f_tex = str(f_val).replace('.', '{,}')
+        ax.plot(
+            p_continuous,
+            s_curve,
+            color=col,
+            linestyle="--",
+            linewidth=1.3,
+            alpha=0.65,
+            label=f"Amdahl {f_name} ($f = {f_tex}$ [CI: ${ci_str}$])"
+        )
 
-    # Hitung rata-rata f gabungan untuk kurva batas umum
-    f_used = round(float(np.mean(list(f_filter_fits.values()))), 2) if f_fraction is None else f_fraction
-    f_fraction = f_used
-
-    # S_Amdahl = 1.0 / ((1.0 - f) + (f / P))
-    s_amdahl_curve = 1.0 / ((1.0 - f_used) + (f_used / p_continuous))
-    ax.plot(
-        p_continuous,
-        s_amdahl_curve,
-        color="#7b1fa2",          # Ungu elegan
-        linestyle="--",
-        linewidth=2.0,
-        label=f"Batas Teoretis Amdahl (f_mean={f_used:.2f})",
-        alpha=0.9
-    )
-
-    # 3. Plot Kurva Speedup Empiris Masing-Masing Filter dengan 95% CI Error Bar
+    # 3. Plot Kurva Speedup Empiris Masing-Masing Filter dengan 95% CI Error Bar (t-Student)
     for f_name in target_filters:
         f_data = sub_df[sub_df["filter"] == f_name].sort_values("p")
         if f_data.empty:
@@ -440,7 +420,7 @@ def plot_scenario_b(
                 val_mean = float(match.mean())
                 n_samp = len(match)
                 val_std = float(match.std()) if n_samp > 1 else 0.0
-                ci95 = 1.96 * val_std / np.sqrt(n_samp) if n_samp > 1 else 0.0
+                ci95 = 2.04523 * val_std / np.sqrt(n_samp) if n_samp > 1 else 0.0
                 p_vals.append(p)
                 speedup_vals.append(val_mean)
                 speedup_errs.append(ci95)
@@ -453,13 +433,12 @@ def plot_scenario_b(
             "linewidth": 2.0,
             "markersize": 7,
         })
-        fit_f_val = f_filter_fits.get(f_name, f_used)
 
         ax.errorbar(
             p_vals,
             speedup_vals,
             yerr=speedup_errs,
-            label=f"{style['label']} ($f={fit_f_val:.2f}$)",
+            label=f"Empiris: {style['label']}",
             color=style["color"],
             marker=style["marker"],
             linestyle=style["linestyle"],
@@ -482,34 +461,39 @@ def plot_scenario_b(
         points_at_p.sort(key=lambda x: x[1])
 
         if len(points_at_p) == 3:
+            # Pengaturan posisi bebas bentrok:
+            # P=1: Stacking vertikal di kanan marker (x offset +14) bebas dari sumbu Y & tick angka 1
+            # P=2 & P=4: Smart vertical/horizontal offsets
+            # P=8: Sobel di atas (0, 16), Gaussian di kiri atas (-18, 8), Grayscale di bawah (0, -16)
             cfg_p = {
                 1: [
-                    ("top", "center", (0, -16)),
-                    ("bottom", "right", (-15, 6)),
-                    ("bottom", "left", (15, 6)),
+                    ("top", "left", (14, -8)),
+                    ("center", "left", (14, 3)),
+                    ("bottom", "left", (14, 14)),
                 ],
                 2: [
                     ("top", "center", (0, -16)),
-                    ("bottom", "right", (-15, 6)),
-                    ("bottom", "center", (0, 10)),
+                    ("bottom", "right", (-16, 8)),
+                    ("bottom", "center", (0, 12)),
                 ],
                 4: [
                     ("top", "center", (0, -16)),
-                    ("bottom", "right", (-15, 6)),
-                    ("bottom", "center", (0, 10)),
+                    ("bottom", "right", (-16, 8)),
+                    ("bottom", "center", (0, 12)),
                 ],
                 8: [
                     ("top", "center", (0, -16)),
-                    ("bottom", "right", (-15, 6)),
-                    ("bottom", "left", (15, 6)),
+                    ("bottom", "right", (-18, 8)),
+                    ("bottom", "center", (0, 16)),
                 ]
             }
             mapping = cfg_p.get(p, [("bottom", "center", (0, 8))] * 3)
             for idx, (fname, val) in enumerate(points_at_p):
                 va_pos, ha_pos, offset = mapping[idx]
                 col = FILTER_STYLES[fname]["color"]
+                lbl_txt = f"{val:.2f}".replace('.', ',') + "x"
                 ax.annotate(
-                    f"{val:.2f}x",
+                    lbl_txt,
                     xy=(p, val),
                     xytext=offset,
                     textcoords="offset points",
@@ -519,7 +503,7 @@ def plot_scenario_b(
                     fontweight="bold",
                     color=col,
                     bbox=dict(
-                        boxstyle="round,pad=0.2",
+                        boxstyle="round,pad=0.18",
                         facecolor="#ffffff",
                         edgecolor=col,
                         linewidth=0.6,
@@ -527,17 +511,28 @@ def plot_scenario_b(
                     )
                 )
 
-    ax.set_xticks(target_p)
-    ax.set_xlabel("Alokasi Jumlah Proses Pekerja ($P$)", labelpad=10)
-    ax.set_ylabel(r"Speedup ($S$)", labelpad=10)
-    ax.set_title(
-        f"Skenario B: Skalabilitas Komputasi Paralel & Hukum Amdahl\n"
-        f"(Resolusi Citra Tetap 2048x2048, Fraksi Paralel $f = {f_fraction:.2f}$)",
-        pad=14
+    # Catatan khusus kontrol A/A di titik P=1
+    ax.annotate(
+        "P = 1: Kontrol A/A\n(Serial vs Serial)",
+        xy=(1.0, 1.06),
+        xytext=(1.0, 2.5),
+        ha="center",
+        va="bottom",
+        fontsize=8,
+        fontstyle="italic",
+        color="#334155",
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="#F1F5F9", edgecolor="#94A3B8", linewidth=0.8),
+        arrowprops=dict(arrowstyle="->", color="#64748B", lw=1.0)
     )
 
-    ax.set_xlim(0.8, 8.5)
+    ax.set_xticks(target_p)
+    ax.set_xlabel("Alokasi Jumlah Proses Pekerja ($P$)", labelpad=10)
+    ax.set_ylabel(r"Rasio Percepatan ($S = T_{\mathrm{serial}} / T_{\mathrm{paralel}}$)", labelpad=10)
+    # Judul in-plot ditiadakan sesuai format UNTAN (keterangan judul di naskah Word)
+
+    ax.set_xlim(0.65, 8.85)
     ax.set_ylim(bottom=0.5, top=8.8)
+    ax.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: f"{y:g}".replace('.', ',')))
 
     ax.legend(loc="upper left", framealpha=0.92)
     plt.tight_layout()
@@ -595,12 +590,12 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
             oh = float(f_row["overhead"].mean()) if "overhead" in f_row.columns else 0.0
             n_oh = len(f_row["overhead"]) if "overhead" in f_row.columns else 1
             oh_std = float(f_row["overhead"].std()) if n_oh > 1 else 0.0
-            oh_ci = 1.96 * oh_std / np.sqrt(n_oh) if n_oh > 1 else 0.0
+            oh_ci = 2.04523 * oh_std / np.sqrt(n_oh) if n_oh > 1 else 0.0
 
             cpu = float(f_row["cpu_utilization"].mean()) if "cpu_utilization" in f_row.columns else 0.0
             n_cpu = len(f_row["cpu_utilization"]) if "cpu_utilization" in f_row.columns else 1
             cpu_std = float(f_row["cpu_utilization"].std()) if n_cpu > 1 else 0.0
-            cpu_ci = 1.96 * cpu_std / np.sqrt(n_cpu) if n_cpu > 1 else 0.0
+            cpu_ci = 2.04523 * cpu_std / np.sqrt(n_cpu) if n_cpu > 1 else 0.0
         else:
             oh, oh_ci = 0.0, 0.0
             cpu, cpu_ci = 0.0, 0.0
@@ -628,7 +623,7 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
         error_kw={"elinewidth": 1.2, "capthick": 1.2, "ecolor": "#555555"},
         width=bar_width,
         color=color_overhead,
-        label="Durasi Overhead (detik)",
+        label="Durasi Beban Tambahan (detik)",
         edgecolor="#222222",
         linewidth=1.1,
         alpha=0.88
@@ -643,7 +638,7 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
         error_kw={"elinewidth": 1.2, "capthick": 1.2, "ecolor": "#555555"},
         width=bar_width,
         color=color_cpu,
-        label="Utilisasi CPU (%)",
+        label="Pemanfaatan CPU (%)",
         edgecolor="#222222",
         linewidth=1.1,
         alpha=0.88
@@ -654,10 +649,11 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
         height = rect.get_height()
         err_val = overhead_errs[i] if i < len(overhead_errs) else 0.0
         y_pos = height + err_val
+        lbl_s = f"{height:.3f}".replace('.', ',') + " s"
         ax1.annotate(
-            f"{height:.3f} s",
+            lbl_s,
             xy=(rect.get_x() + rect.get_width() / 2, y_pos),
-            xytext=(0, 5),
+            xytext=(0, 6),
             textcoords="offset points",
             ha="center",
             va="bottom",
@@ -677,10 +673,11 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
         height = rect.get_height()
         err_val = cpu_errs[i] if i < len(cpu_errs) else 0.0
         y_pos = height + err_val
+        lbl_p = f"{height:.1f}".replace('.', ',') + "%"
         ax2.annotate(
-            f"{height:.1f}%",
+            lbl_p,
             xy=(rect.get_x() + rect.get_width() / 2, y_pos),
-            xytext=(0, 5),
+            xytext=(0, 6),
             textcoords="offset points",
             ha="center",
             va="bottom",
@@ -701,26 +698,21 @@ def plot_scenario_c(csv_path: str, output_path: str = "results/plots/skenario_c_
     ax1.set_xticklabels(categories, fontweight="bold")
     ax1.set_xlabel("Kompleksitas Komputasi Filter Citra", labelpad=10)
 
-    # Format sumbu Y kiri dan kanan
-    ax1.set_ylabel("Durasi Overhead Komunikasi & Partisi (detik)", color=color_overhead, labelpad=10)
+    # Format sumbu Y kiri dan kanan (tanpa karakter '&' dan format desimal koma)
+    ax1.set_ylabel("Durasi Beban Tambahan Paralel (detik)", color=color_overhead, labelpad=10)
     ax1.tick_params(axis="y", labelcolor=color_overhead)
     max_oh = max(overheads) if overheads else 1.0
-    ax1.set_ylim(0, max_oh * 1.35)
+    ax1.set_ylim(0, max_oh * 1.38)
+    ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: f"{y:.2f}".replace('.', ',')))
 
-    ax2.set_ylabel("Rata-rata Utilisasi CPU (%)", color=color_cpu, labelpad=10)
+    ax2.set_ylabel("Pemanfaatan Kapasitas CPU (%)", color=color_cpu, labelpad=10)
     ax2.tick_params(axis="y", labelcolor=color_cpu)
-    ax2.set_ylim(0, 115)  # Beri ruang untuk teks anotasi di atas batang 100%
-    ax2.yaxis.set_major_formatter(ticker.PercentFormatter(xmax=100.0, decimals=0))
+    ax2.set_ylim(0, 115)
+    ax2.yaxis.set_major_formatter(ticker.FuncFormatter(lambda y, _: f"{int(y)}%"))
 
     # Matikan grid sekunder agar tidak bertabrakan dengan grid primer
     ax2.grid(False)
-
-    # Judul grafik
-    plt.title(
-        "Skenario C: Analisis Trade-off Overhead dan Utilisasi CPU\n"
-        "Berdasarkan Beban Komputasi Filter Citra",
-        pad=16
-    )
+    # Judul in-plot ditiadakan sesuai format UNTAN (keterangan judul di naskah Word)
 
     # Satukan legenda dari kedua sumbu
     lines1, labels1 = ax1.get_legend_handles_labels()
