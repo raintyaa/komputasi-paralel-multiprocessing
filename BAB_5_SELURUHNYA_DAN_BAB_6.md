@@ -284,7 +284,7 @@ Perbedaan ini sejalan dengan rasio antara waktu komputasi dan waktu komunikasi I
 *[Gambar disematkan di dokumen docx]*
 
 
-*Gambar 5.3. Perbandingan Durasi Overhead Komunikasi dan Sinkronisasi serta Rata-rata Utilisasi CPU pada Ketiga Filter (2048 × 2048 Piksel; P = 4).*
+*Gambar 5.3. Perbandingan Durasi Overhead Komunikasi dan Sinkronisasi serta Rata-rata Utilisasi CPU pada Ketiga Filter (2048 × 2048 Piksel; P = 4)*
 
 
 ## Pencocokan Model Teoritis Skalabilitas
