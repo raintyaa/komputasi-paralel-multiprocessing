@@ -145,7 +145,7 @@
         </button>
         <button class="tab-btn" id="tab-btn-arch" role="tab" aria-selected="false" aria-controls="tab-arch" tabindex="-1">
           <span class="tab-btn-icon"><span data-icon="cpu"></span></span>
-          <span class="tab-btn-text">Arsitektur Sistem &amp; FAQ</span>
+          <span class="tab-btn-text">Arsitektur Sistem</span>
         </button>
       </nav>
 
@@ -752,11 +752,11 @@
     </section>
 
     <!-- ================================================================ -->
-    <!-- TAB 4: ARSITEKTUR SISTEM & FAQ                                   -->
+    <!-- TAB 4: ARSITEKTUR SISTEM                                         -->
     <!-- ================================================================ -->
     <section class="tab-panel" id="tab-arch" role="tabpanel" aria-labelledby="tab-btn-arch" hidden>
       <header class="panel-head">
-        <h2 class="panel-title">Arsitektur Sistem &amp; FAQ</h2>
+        <h2 class="panel-title">Arsitektur Sistem</h2>
         <p class="prose-sub">
           Landasan arsitektural komputasi paralel: topologi prosesor heterogen Intel Raptor
           Lake, dekomposisi spasial baris horizontal, dan mekanisme boundary halo (k=1).
@@ -843,46 +843,7 @@
         </div>
       </div>
 
-      <div class="academic-card mt-6">
-        <div class="card-header-integrated">
-          <div class="card-header-left">
-            <div class="card-icon-bubble"><span data-icon="help-circle"></span></div>
-            <div class="card-header-text">
-              <h3 class="card-title">Panduan Pembelaan Akademik (Evaluasi Dosen)</h3>
-              <p class="card-subtitle">Jawaban siap pakai untuk sesi evaluasi</p>
-            </div>
-          </div>
-          <span class="badge-capsule">Tanya Jawab</span>
-        </div>
-        <div class="card-body space-y-3">
-          <details class="faq-item">
-            <summary><span class="summary-arrow" aria-hidden="true">&rsaquo;</span>
-              Mengapa efisiensi pada citra kecil (512&times;512) rendah atau speedup &lt; 1x?
-            </summary>
-            <div class="faq-answer">
-              Pada citra 512&times;512 (beban komputasi sekitar 0.006 detik), waktu untuk serialisasi
-              memori (pickling), partisi matriks, dan pengiriman buffer array melalui IPC
-              (Inter-Process Communication) jauh lebih besar daripada waktu komputasi aritmatika
-              filter itu sendiri. Ini membuktikan prinsip bahwa komputasi paralel hanya memberikan
-              percepatan signifikan jika rasio komputasi terhadap komunikasi
-              (T<sub>comp</sub> / T<sub>comm</sub>) bernilai tinggi.
-            </div>
-          </details>
-          <details class="faq-item">
-            <summary><span class="summary-arrow" aria-hidden="true">&rsaquo;</span>
-              Mengapa pengujian menggunakan arsitektur pre-warmed pool?
-            </summary>
-            <div class="faq-answer">
-              Pada Windows, multiprocessing menggunakan metode <b class="font-semibold text-text-main">spawn</b>,
-              bukan <b class="font-semibold text-text-main">fork</b> seperti pada Linux. Pembuatan proses
-              Python baru (cold spawn) membutuhkan inisialisasi runtime 1.5&ndash;2.5 detik. Jika waktu
-              spawn dimasukkan dalam blok pengukuran, ia mengaburkan pengukuran murni algoritma
-              paralel. Dengan pre-warmed pool, kita mengukur <i>pure algorithmic speedup</i> secara adil.
-            </div>
-          </details>
-        </div>
-      </div>
-    </section>
+      </section>
 
     </main>
   </div>
